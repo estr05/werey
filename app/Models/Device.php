@@ -12,6 +12,7 @@ class Device extends Model
 
     // Campos que permitiremos llenar desde la API y el controlador
     protected $fillable = [
+        'user_id',
         'alias',
         'identifier',
         'latitude',
@@ -35,6 +36,22 @@ class Device extends Model
         'longitude'     => 'double',
         'last_seen'     => 'datetime', // Permite usar funciones de fecha como diffForHumans()
     ];
+
+    /**
+     * Relación: Un dispositivo pertenece a un usuario.
+     */
+    public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Relación: Un dispositivo tiene muchos lugares seguros.
+     */
+    public function safePlaces(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(SafePlace::class);
+    }
 
     /**
      * Relación: Un dispositivo tiene muchos registros de historial.

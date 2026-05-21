@@ -19,7 +19,8 @@ class LocationHistory extends Model
         'battery_level', 
         'is_charging',    // Capturado en la migración de detalles
         'connection_type', // Capturado en la migración de detalles
-        'activity'
+        'activity',
+        'screen_active'
     ];
 
     /**
@@ -28,6 +29,7 @@ class LocationHistory extends Model
      */
     protected $casts = [
         'is_charging' => 'boolean',
+        'screen_active' => 'boolean',
         'latitude'    => 'double',
         'longitude'   => 'double',
         'battery_level' => 'integer',
