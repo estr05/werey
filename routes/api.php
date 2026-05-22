@@ -1,26 +1,66 @@
 <?php
 
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DeviceController;
+use App\Http\Controllers\Api\V1\AuthApiController;
+use App\Http\Controllers\Api\V1\HandshakeController;
+use App\Http\Controllers\Api\V1\TelemetryController;
+use App\Http\Controllers\Api\V1\DeviceApiController;
 
 /*
 |--------------------------------------------------------------------------
-| API Routes
+| API Routes — Warey Mobile
 |--------------------------------------------------------------------------
+|
+| Versión 1 (v1) de la API.
+|
+| Rutas públicas (sin autenticación):
+|   POST /api/v1/auth/login
+|
+| Rutas protegidas (requieren Bearer Token de Sanctum):
+|   POST   /api/v1/auth/logout
+|   GET    /api/v1/auth/me
+|   POST   /api/v1/handshake
+|   POST   /api/v1/telemetry
+|   GET    /api/v1/telemetry/{identifier}/history
+|   GET    /api/v1/devices
+|   GET    /api/v1/devices/{identifier}
+|
 */
 
-// Ruta predeterminada de Laravel para usuarios (puedes dejarla o borrarla)
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+Route::prefix('v1')->group(function () {
 
-// --- RUTA DE WAREY ---
-// Esta es la ruta que recibirá los datos del GPS y sensores
-Route::post('/update-location', [DeviceController::class, 'update']);
+    // -----------------------------------------------------------------------
+    // AUTH — Rutas públicas (sin token)
+    // -----------------------------------------------------------------------
+    Route::prefix('auth')->group(function () {
+        Route::post('/login', [AuthApiController::class, 'login']);
+    });
 
-// Endpoint que usará Flutter para reportar datos
-Route::post('/telemetry/update', [DeviceController::class, 'updateTelemetry']);
+    // -----------------------------------------------------------------------
+    // Rutas protegidas por Sanctum (requieren: Authorization: Bearer <token>)
+    // -----------------------------------------------------------------------
+    Route::middleware('auth:sanctum')->group(function () {
 
-// Endpoint que usará el Dashboard Web para ver los dispositivos
-Route::get('/devices', [DeviceController::class, 'index']);
+        // Auth — cierre de sesión y datos del usuario actual
+        Route::prefix('auth')->group(function () {
+            Route::post('/logout', [AuthApiController::class, 'logout']);
+            Route::get('/me',     [AuthApiController::class, 'me']);
+        });
+
+        // Handshake — vinculación de dispositivo al usuario autenticado
+        Route::post('/handshake', [HandshakeController::class, 'pair']);
+
+        // Telemetría — envío de datos GPS+sensores e historial
+        Route::prefix('telemetry')->group(function () {
+            Route::post('/',                             [TelemetryController::class, 'update']);
+            Route::get('/{identifier}/history',          [TelemetryController::class, 'history']);
+        });
+
+        // Dispositivos — listado y detalle
+        Route::prefix('devices')->group(function () {
+            Route::get('/',              [DeviceApiController::class, 'index']);
+            Route::get('/{identifier}', [DeviceApiController::class, 'show']);
+        });
+
+    });
+});
