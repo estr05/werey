@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\LocationHistory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * LocationController
@@ -76,6 +77,14 @@ class LocationController extends Controller
         }
 
         $movementType = $validated['movement_type'] ?? 'STATIC';
+
+        Log::info('[Location] Frame GPS recibido', [
+            'device_id'    => $device->id,
+            'latitude'     => $validated['latitude'],
+            'longitude'    => $validated['longitude'],
+            'movement_type' => $movementType,
+            'accuracy'     => $validated['accuracy'] ?? null,
+        ]);
 
         // 1. Actualizar posición y estado actual del dispositivo
         //    También refrescamos last_seen para mantener el dispositivo como "online"

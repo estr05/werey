@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\DeviceApiController;
 use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\DeviceStatusController;
+use App\Http\Controllers\Api\V1\DiagnosticsController;
 use App\Http\Controllers\Api\V1\SafePlaceController;
 
 /*
@@ -68,7 +69,11 @@ Route::prefix('v1')->group(function () {
         // La app (warey_movil) usa LocationRepository → POST /api/v1/location
         Route::post('location', [LocationController::class, 'store']);
 
-        // Dispositivos — listado y detalle
+        // Diagnóstico — estado RAW del dispositivo (para debug)
+        Route::prefix('diagnostics')->group(function () {
+            Route::get('/device/{id}', [DiagnosticsController::class, 'show']);
+        });
+
         // Dispositivos — listado y detalle
         Route::prefix('devices')->group(function () {
             Route::get('/',              [DeviceApiController::class, 'index']);

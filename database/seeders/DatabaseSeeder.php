@@ -31,8 +31,8 @@ class DatabaseSeeder extends Seeder
             'longitude' => -99.133209,
             'battery_level' => 85,
             'is_charging' => false,
-            'connection_type' => 'WIFI',
-            'activity' => 'STILL',
+            'connection_type' => 'wifi',
+            'activity' => 'still',
             'screen_active' => true,
             'last_seen' => now(),
         ]);
@@ -69,8 +69,8 @@ class DatabaseSeeder extends Seeder
                 'longitude' => $loc['lng'],
                 'battery_level' => 85 - $index,
                 'is_charging' => false,
-                'connection_type' => 'MOBILE',
-                'activity' => 'IN_VEHICLE',
+                'connection_type' => 'mobile',
+                'activity' => 'in_vehicle',
                 'screen_active' => false,
                 'created_at' => now()->subMinutes(30 - ($index * 10)),
             ]);

@@ -7,6 +7,7 @@ use App\Models\Device;
 use App\Models\LocationHistory;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class TelemetryController extends Controller
 {
@@ -61,6 +62,18 @@ class TelemetryController extends Controller
                 'message' => 'Dispositivo no encontrado o inactivo.',
             ], 404);
         }
+
+        Log::info('[Telemetry] Paquete recibido', [
+            'device_id'      => $device->id,
+            'latitude'       => $validated['latitude'],
+            'longitude'      => $validated['longitude'],
+            'battery_level'  => $validated['battery_level'] ?? null,
+            'is_charging'    => $validated['is_charging'] ?? null,
+            'connection_type'=> $validated['connection_type'] ?? null,
+            'activity'       => $validated['activity'] ?? null,
+            'movement_type'  => $validated['movement_type'] ?? null,
+            'screen_active'  => $validated['screen_active'] ?? null,
+        ]);
 
         // 1. Actualizar el estado ACTUAL del dispositivo (última posición conocida)
         $device->update([

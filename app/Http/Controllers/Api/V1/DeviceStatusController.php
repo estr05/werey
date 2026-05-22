@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 /**
  * DeviceStatusController
@@ -42,12 +43,13 @@ class DeviceStatusController extends Controller
         $validated = $request->validate([
             'battery_level'   => ['required', 'integer', 'between:0,100'],
             'is_charging'     => ['required', 'boolean'],
-            'connection_type' => ['required', 'string', 'in:wifi,cellular,none'],
+            'connection_type' => ['required', 'string'],
             'signal_strength' => ['nullable', 'integer', 'between:0,4'],
             'has_internet'    => ['required', 'boolean'],
             'tracking_state'  => ['required', 'string'],
             'activity_status' => ['required', 'string'],
             'captured_at'     => ['required', 'string'],
+            'screen_active'   => ['nullable', 'boolean'],
         ]);
 
         // Resolver el dispositivo desde el token de Sanctum (device_token:<id>)
@@ -70,13 +72,46 @@ class DeviceStatusController extends Controller
             ], 404);
         }
 
+        // Log del payload recibido (útil para debug en Railway)
+        Log::info('[DeviceStatus] Frame recibido', [
+            'device_id'       => $device->id,
+            'battery_level'   => $validated['battery_level'],
+            'is_charging'     => $validated['is_charging'],
+            'connection_type_raw' => $validated['connection_type'],
+            'tracking_state'  => $validated['tracking_state'],
+            'activity_status' => $validated['activity_status'],
+            'screen_active'   => $validated['screen_active'] ?? null,
+        ]);
+
+        // Normalizar connection_type a minúsculas (trim + case-insensitive)
+        $connectionType = strtolower(trim($validated['connection_type']));
+        
+        // Mapear valores comunes al estándar interno
+        $connectionMap = [
+            'mobile' => 'cellular',
+            '4g'     => 'cellular',
+            '5g'     => 'cellular',
+            'lte'    => 'cellular',
+            'edge'   => 'cellular',
+            '3g'     => 'cellular',
+        ];
+        $normalizedType = $connectionMap[$connectionType] ?? $connectionType;
+
+        // Log del valor normalizado
+        Log::info('[DeviceStatus] Normalizado', [
+            'device_id'       => $device->id,
+            'connection_type_original' => $validated['connection_type'],
+            'connection_type_normalized' => $normalizedType,
+        ]);
+
         // Actualizar estado del dispositivo
         $device->update([
             'battery_level'   => $validated['battery_level'],
             'is_charging'     => $validated['is_charging'],
-            'connection_type' => $validated['connection_type'],
+            'connection_type' => $normalizedType,
             'signal_strength' => $validated['signal_strength'] ?? $device->signal_strength,
             'has_internet'    => $validated['has_internet'],
+            'screen_active'   => $validated['screen_active'] ?? $device->screen_active,
             'tracking_state'  => $validated['tracking_state'],
             'activity_status' => $validated['activity_status'],
             'last_status_at'  => \Carbon\Carbon::parse($validated['captured_at']),
