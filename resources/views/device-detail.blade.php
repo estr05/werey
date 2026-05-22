@@ -351,7 +351,8 @@
         var currentStopGroup = [];
 
         telemetryHistory.forEach(function(point) {
-            if (point.activity === 'still') {
+            var act = (point.activity || '').toLowerCase();
+            if (act === 'still') {
                 currentStopGroup.push(point);
             } else {
                 if (currentStopGroup.length > 0) {
@@ -559,6 +560,16 @@
             navigator.clipboard.writeText(text);
             alert('Coordenadas copiadas al portapapeles.');
         }
+
+        // Corregir cálculo de tamaño de Leaflet tras cargar el DOM y CSS
+        window.addEventListener('load', function() {
+            setTimeout(function() {
+                map.invalidateSize();
+                if (pathPoints.length > 0) {
+                    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                }
+            }, 100);
+        });
     </script>
 </body>
 </html>

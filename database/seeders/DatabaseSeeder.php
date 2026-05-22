@@ -63,7 +63,7 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($locations as $index => $loc) {
-            \App\Models\LocationHistory::create([
+            $lh = \App\Models\LocationHistory::create([
                 'device_id' => $device->id,
                 'latitude' => $loc['lat'],
                 'longitude' => $loc['lng'],
@@ -74,6 +74,20 @@ class DatabaseSeeder extends Seeder
                 'screen_active' => false,
                 'created_at' => now()->subMinutes(30 - ($index * 10)),
             ]);
+
+            // Actualizar el estado del dispositivo con la última ubicación del historial
+            if ($index === count($locations) - 1) {
+                $device->update([
+                    'latitude' => $lh->latitude,
+                    'longitude' => $lh->longitude,
+                    'battery_level' => $lh->battery_level,
+                    'is_charging' => $lh->is_charging,
+                    'connection_type' => $lh->connection_type,
+                    'activity' => $lh->activity,
+                    'screen_active' => $lh->screen_active,
+                    'last_seen' => $lh->created_at,
+                ]);
+            }
         }
     }
 }
