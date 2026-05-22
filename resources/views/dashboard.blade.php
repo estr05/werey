@@ -173,7 +173,7 @@
             </div>
 
             <p class="text-xs text-slate-400 mb-6 leading-relaxed bg-slate-900/60 p-4 rounded-xl border border-white/5 font-medium">
-                ⚙️ <span class="font-bold text-white">Modo Desarrollo:</span> Ingresa el ID único que generará la app móvil Flutter de este teléfono para sincronizar el canal de telemetría y habilitar el rastreo.
+                ⚙️ <span class="font-bold text-white">Modo Desarrollo:</span> El ID único se genera automáticamente. Cópialo y pégalo en la app móvil Flutter para sincronizar el canal de telemetría y habilitar el rastreo.
             </p>
 
             <form action="{{ route('device.store') }}" method="POST" class="space-y-5">
@@ -186,10 +186,18 @@
                 </div>
 
                 <div>
-                    <label for="identifier" class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Identificador Único (ID del Teléfono)</label>
-                    <input type="text" name="identifier" id="identifier" required
-                           class="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-sm text-white placeholder-slate-600 outline-none focus:border-[#00e5ff] transition-all font-mono"
-                           placeholder="Ej. WRY-89A2-BC90">
+                    <label for="identifier" class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Identificador Único (Auto-generado)</label>
+                    <div class="flex items-center gap-2">
+                        <input type="text" name="identifier" id="identifier" readonly required
+                               class="flex-1 bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-sm text-[#00e5ff] outline-none font-mono tracking-widest cursor-default select-all"
+                               placeholder="Generando...">
+                        <button type="button" id="copy-btn" onclick="copyIdentifier()"
+                                title="Copiar ID"
+                                class="flex-shrink-0 bg-slate-800 hover:bg-[#005d70] border border-slate-700 text-slate-400 hover:text-white p-3 rounded-xl transition-all">
+                            <span id="copy-icon" class="material-symbols-outlined text-xl">content_copy</span>
+                        </button>
+                    </div>
+                    <p id="copy-feedback" class="text-[10px] text-emerald-400 font-bold mt-1.5 hidden">✓ ID copiado al portapapeles</p>
                 </div>
 
                 <div class="text-[10px] text-slate-500 font-mono italic">
@@ -205,11 +213,47 @@
     </div>
 
     <script>
+        // Genera un ID único con formato WRY-XXXX-XXXX
+        function generateWareyId() {
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            const rand = (n) => Array.from({length: n}, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+            return `WRY-${rand(4)}-${rand(4)}`;
+        }
+
         function openLinkModal() {
+            // Auto-generar el ID cada vez que se abre el modal
+            document.getElementById('identifier').value = generateWareyId();
+            // Resetear feedback de copia
+            document.getElementById('copy-feedback').classList.add('hidden');
+            document.getElementById('copy-icon').textContent = 'content_copy';
             document.getElementById('link-modal').classList.remove('hidden');
         }
+
         function closeLinkModal() {
             document.getElementById('link-modal').classList.add('hidden');
+        }
+
+        function copyIdentifier() {
+            const idValue = document.getElementById('identifier').value;
+            if (!idValue) return;
+
+            navigator.clipboard.writeText(idValue).then(() => {
+                // Feedback visual: ícono cambia a check
+                document.getElementById('copy-icon').textContent = 'check_circle';
+                document.getElementById('copy-feedback').classList.remove('hidden');
+                document.getElementById('copy-btn').classList.add('bg-[#005d70]', 'text-white');
+
+                // Revertir después de 2.5 segundos
+                setTimeout(() => {
+                    document.getElementById('copy-icon').textContent = 'content_copy';
+                    document.getElementById('copy-feedback').classList.add('hidden');
+                    document.getElementById('copy-btn').classList.remove('bg-[#005d70]', 'text-white');
+                }, 2500);
+            }).catch(() => {
+                // Fallback para navegadores que bloqueen clipboard
+                document.getElementById('identifier').select();
+                document.execCommand('copy');
+            });
         }
 
         // Intervalo de refresco en vivo
