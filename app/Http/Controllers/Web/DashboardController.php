@@ -5,8 +5,11 @@ namespace App\Http\Controllers\Web;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\SafePlace;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class DashboardController extends Controller
 {
@@ -166,5 +169,141 @@ class DashboardController extends Controller
         $safePlace->delete();
 
         return redirect()->route('device.show', $device->id)->with('success', 'Punto seguro eliminado.');
+    }
+
+    /**
+     * Endpoint JSON ligero para auto-refresh del dashboard.
+     * Devuelve solo los datos necesarios (dispositivos + stats) sin renderizar HTML.
+     * GET /dashboard/json
+     */
+    public function jsonDevices(): JsonResponse
+    {
+        $user = Auth::user();
+        $devices = $user->devices;
+
+        $stats = [
+            'total'  => $devices->count(),
+            'online' => $devices->whereNotNull('last_seen')->where('last_seen', '>=', now()->subMinutes(5))->count(),
+            'moving' => $devices->where('activity', 'moving')->count(),
+            'alerts' => $devices->whereNotNull('battery_level')->where('battery_level', '<', 20)->count(),
+        ];
+
+        $data = $devices->map(function ($device) {
+            $isPending = is_null($device->last_seen);
+            return [
+                'id'              => $device->id,
+                'alias'           => $device->alias,
+                'identifier'      => $device->identifier,
+                'is_pending'      => $isPending,
+                'activity'        => $device->activity ?? 'unknown',
+                'battery_level'   => $device->battery_level,
+                'is_charging'     => $device->is_charging,
+                'connection_type' => $device->connection_type,
+                'last_seen'       => $device->last_seen?->diffForHumans(),
+                'last_seen_raw'   => $device->last_seen?->toIso8601String(),
+                'latitude'        => $device->latitude,
+                'longitude'       => $device->longitude,
+                'show_url'        => route('device.show', $device->id),
+                'delete_url'      => route('device.destroy', $device->id),
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'stats'   => $stats,
+            'devices' => $data,
+            'server_time' => now()->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Endpoint SSE (Server-Sent Events) para actualizaciones en tiempo real del dashboard.
+     * Reemplaza el polling HTTP manteniendo una conexión persistente.
+     * GET /dashboard/sse
+     *
+     * El cliente se conecta via EventSource y recibe:
+     *   - event: update  → payload con stats + devices
+     *   - event: heartbeat → mantiene la conexión activa
+     */
+    public function sseStream(): Response
+    {
+        $user = Auth::user();
+
+        // Liberar la sesión antes de entrar al loop para no bloquear otras requests del mismo usuario
+        session_write_close();
+
+        $response = new StreamedResponse(function () use ($user) {
+            // Deshabilitar el buffer de salida para que los datos se envíen inmediatamente
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            $lastPayload = null;
+
+            while (!connection_aborted()) {
+                // Refrescar el usuario desde la BD en cada iteración
+                $user->refresh();
+                $devices = $user->devices;
+
+                $stats = [
+                    'total'  => $devices->count(),
+                    'online' => $devices->whereNotNull('last_seen')->where('last_seen', '>=', now()->subMinutes(5))->count(),
+                    'moving' => $devices->where('activity', 'moving')->count(),
+                    'alerts' => $devices->whereNotNull('battery_level')->where('battery_level', '<', 20)->count(),
+                ];
+
+                $data = $devices->map(function ($device) {
+                    $isPending = is_null($device->last_seen);
+                    return [
+                        'id'              => $device->id,
+                        'alias'           => $device->alias,
+                        'identifier'      => $device->identifier,
+                        'is_pending'      => $isPending,
+                        'activity'        => $device->activity ?? 'unknown',
+                        'battery_level'   => $device->battery_level,
+                        'is_charging'     => $device->is_charging,
+                        'connection_type' => $device->connection_type,
+                        'last_seen'       => $device->last_seen?->diffForHumans(),
+                        'last_seen_raw'   => $device->last_seen?->toIso8601String(),
+                        'latitude'        => $device->latitude,
+                        'longitude'       => $device->longitude,
+                        'show_url'        => route('device.show', $device->id),
+                        'delete_url'      => route('device.destroy', $device->id),
+                    ];
+                });
+
+                $payload = json_encode([
+                    'success' => true,
+                    'stats'   => $stats,
+                    'devices' => $data,
+                    'server_time' => now()->toIso8601String(),
+                ]);
+
+                // Solo enviar si los datos cambiaron (evita tráfico innecesario)
+                if ($payload !== $lastPayload) {
+                    echo "event: update\n";
+                    echo "data: {$payload}\n\n";
+                    $lastPayload = $payload;
+                } else {
+                    // Heartbeat para mantener la conexión viva
+                    echo "event: heartbeat\n";
+                    echo "data: {\"time\":\"" . now()->toIso8601String() . "\"}\n\n";
+                }
+
+                if (ob_get_level()) {
+                    ob_flush();
+                }
+                flush();
+
+                // Esperar 3 segundos antes del siguiente ciclo
+                sleep(3);
+            }
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        $response->headers->set('X-Accel-Buffering', 'no'); // Deshabilitar buffering de nginx
+
+        return $response;
     }
 }

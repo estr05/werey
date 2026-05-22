@@ -78,6 +78,7 @@ class LocationController extends Controller
         $movementType = $validated['movement_type'] ?? 'STATIC';
 
         // 1. Actualizar posición y estado actual del dispositivo
+        //    También refrescamos last_seen para mantener el dispositivo como "online"
         $device->update([
             'latitude'   => $validated['latitude'],
             'longitude'  => $validated['longitude'],
@@ -87,15 +88,15 @@ class LocationController extends Controller
 
         // 2. Guardar en historial para el mapa del dashboard
         LocationHistory::create([
-            'device_id'     => $device->id,
-            'latitude'      => $validated['latitude'],
-            'longitude'     => $validated['longitude'],
-            'battery_level' => $device->battery_level,       // Se mantiene el último conocido
-            'is_charging'   => $device->is_charging,
-            'connection_type' => $device->connection_type,
-            'activity'      => strtolower($movementType),
-            'movement_type' => $movementType,
-            'screen_active' => $device->screen_active,
+            'device_id'       => $device->id,
+            'latitude'        => $validated['latitude'],
+            'longitude'       => $validated['longitude'],
+            'battery_level'   => $device->battery_level,       // Hereda del último device-status
+            'is_charging'     => $device->is_charging,         // Hereda del último device-status
+            'connection_type' => $device->connection_type,     // Hereda del último device-status
+            'activity'        => strtolower($movementType),
+            'movement_type'   => $movementType,
+            'screen_active'   => $device->screen_active,       // Hereda del último device-status
         ]);
 
         return response()->json([

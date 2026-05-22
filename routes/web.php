@@ -18,6 +18,13 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout')->middl
 Route::middleware('auth')->group(function () {
     Route::get('/', [DashboardController::class, 'index']);
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    
+    // Endpoint JSON ligero para auto-refresh en tiempo real del dashboard
+    Route::get('/dashboard/json', [DashboardController::class, 'jsonDevices'])->name('dashboard.json');
+    
+    // Endpoint SSE para actualizaciones en tiempo real (reemplaza el polling)
+    Route::get('/dashboard/sse', [DashboardController::class, 'sseStream'])->name('dashboard.sse');
+    
     Route::get('/device/{id}', [DashboardController::class, 'show'])->name('device.show');
     Route::delete('/device/{id}', [DashboardController::class, 'destroy'])->name('device.destroy');
     
