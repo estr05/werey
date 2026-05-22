@@ -10,51 +10,44 @@ use Illuminate\Http\Request;
 class HandshakeController extends Controller
 {
     /**
-     * Vincula un dispositivo físico al usuario autenticado.
-     * Si el dispositivo ya existe, lo re-vincula al usuario actual.
-     * Si es nuevo, lo crea y lo vincula.
+     * Vincula un dispositivo físico (por su UUID de hardware) usando el
+     * código generado en el panel web (WRY-XXXX-XXXX).
      *
-     * POST /api/v1/handshake
-     * Header: Authorization: Bearer <token>
-     * Body: { "identifier": "uuid-del-dispositivo", "alias": "Mi iPhone" }
+     * POST /api/v1/devices/handshake
      */
     public function pair(Request $request): JsonResponse
     {
         $request->validate([
-            'identifier' => ['required', 'string', 'max:255'],
-            'alias'      => ['required', 'string', 'max:255'],
+            'pairing_code' => ['required', 'string'],
+            'device_uuid'  => ['required', 'string', 'max:255'],
         ]);
 
-        $user = $request->user();
+        // Buscamos el dispositivo por el identificador (que en el dashboard generamos como WRY-XXXX-XXXX)
+        $device = Device::where('identifier', $request->pairing_code)->first();
 
-        // Buscar si el dispositivo ya existe por su UUID
-        $device = Device::where('identifier', $request->identifier)->first();
-
-        if ($device) {
-            // El dispositivo ya existe: actualizamos alias y lo vinculamos al usuario
-            $device->update([
-                'user_id' => $user->id,
-                'alias'   => $request->alias,
-            ]);
-            $message = 'Dispositivo re-vinculado correctamente.';
-        } else {
-            // Dispositivo nuevo: lo creamos y vinculamos al usuario
-            $device = Device::create([
-                'user_id'    => $user->id,
-                'identifier' => $request->identifier,
-                'alias'      => $request->alias,
-            ]);
-            $message = 'Dispositivo registrado y vinculado correctamente.';
+        if (!$device) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El código de vinculación no es válido o ha expirado.',
+            ], 404);
         }
+
+        // Obtener el usuario dueño de este dispositivo
+        $user = $device->user;
+        
+        // Generar un token único para este hardware
+        $tokenName = "device_token:{$request->device_uuid}";
+        
+        // Borrar tokens anteriores de este mismo hardware (opcional, buena práctica)
+        $user->tokens()->where('name', $tokenName)->delete();
+        
+        $token = $user->createToken($tokenName)->plainTextToken;
 
         return response()->json([
             'success' => true,
-            'message' => $message,
+            'message' => 'Dispositivo vinculado y activado correctamente.',
             'data'    => [
-                'device_id'  => $device->id,
-                'identifier' => $device->identifier,
-                'alias'      => $device->alias,
-                'user_id'    => $device->user_id,
+                'token' => $token,
             ],
         ], 200);
     }

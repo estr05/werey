@@ -30,25 +30,36 @@ class TelemetryController extends Controller
     public function update(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'identifier'      => ['required', 'string'],
             'latitude'        => ['required', 'numeric', 'between:-90,90'],
             'longitude'       => ['required', 'numeric', 'between:-180,180'],
             'battery_level'   => ['nullable', 'integer', 'between:0,100'],
             'is_charging'     => ['nullable', 'boolean'],
-            'connection_type' => ['nullable', 'string', 'in:wifi,mobile,none,unknown'],
-            'activity'        => ['nullable', 'string', 'in:still,walking,running,in_vehicle,on_bicycle,unknown'],
+            'connection_type' => ['nullable', 'string'],
+            'activity'        => ['nullable', 'string'],
             'screen_active'   => ['nullable', 'boolean'],
         ]);
 
-        // Buscar el dispositivo que pertenece al usuario autenticado
-        $device = Device::where('identifier', $validated['identifier'])
-            ->where('user_id', $request->user()->id)
+        $token = $request->user()->currentAccessToken();
+        
+        if (!$token || !str_contains($token->name, 'device_token:')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token de dispositivo no válido para telemetría.',
+            ], 403);
+        }
+
+        // Extraer el UUID de hardware del nombre del token de Sanctum
+        $uuid = str_replace('device_token:', '', $token->name);
+
+        // Buscar el dispositivo activo correspondiente
+        $device = Device::where('user_id', $request->user()->id)
+            ->where('identifier', $uuid)
             ->first();
 
         if (! $device) {
             return response()->json([
                 'success' => false,
-                'message' => 'Dispositivo no encontrado o no vinculado a tu cuenta. Realiza el handshake primero.',
+                'message' => 'Dispositivo no encontrado o inactivo.',
             ], 404);
         }
 

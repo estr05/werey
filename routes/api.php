@@ -35,6 +35,9 @@ Route::prefix('v1')->group(function () {
     Route::prefix('auth')->group(function () {
         Route::post('/login', [AuthApiController::class, 'login']);
     });
+    
+    // Handshake — vinculación de dispositivo (Pública, retorna el token)
+    Route::post('devices/handshake', [HandshakeController::class, 'pair']);
 
     // -----------------------------------------------------------------------
     // Rutas protegidas por Sanctum (requieren: Authorization: Bearer <token>)
@@ -46,9 +49,6 @@ Route::prefix('v1')->group(function () {
             Route::post('/logout', [AuthApiController::class, 'logout']);
             Route::get('/me',     [AuthApiController::class, 'me']);
         });
-
-        // Handshake — vinculación de dispositivo al usuario autenticado
-        Route::post('/handshake', [HandshakeController::class, 'pair']);
 
         // Telemetría — envío de datos GPS+sensores e historial
         Route::prefix('telemetry')->group(function () {
