@@ -35,8 +35,9 @@ class HandshakeController extends Controller
         // Obtener el usuario dueño de este dispositivo
         $user = $device->user;
         
-        // Generar un token único para este hardware
-        $tokenName = "device_token:{$request->device_uuid}";
+        // Generar un token único usando el ID interno del dispositivo en la base de datos
+        // Esto permite que el backend encuentre el dispositivo en Telemetría sin importar el UUID de hardware.
+        $tokenName = "device_token:{$device->id}";
         
         // Borrar tokens anteriores de este mismo hardware (opcional, buena práctica)
         $user->tokens()->where('name', $tokenName)->delete();

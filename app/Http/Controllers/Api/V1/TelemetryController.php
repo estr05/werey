@@ -48,13 +48,11 @@ class TelemetryController extends Controller
             ], 403);
         }
 
-        // Extraer el UUID de hardware del nombre del token de Sanctum
-        $uuid = str_replace('device_token:', '', $token->name);
+        // Extraer el ID interno del dispositivo del nombre del token de Sanctum
+        $deviceId = str_replace('device_token:', '', $token->name);
 
-        // Buscar el dispositivo activo correspondiente
-        $device = Device::where('user_id', $request->user()->id)
-            ->where('identifier', $uuid)
-            ->first();
+        // Buscar el dispositivo activo correspondiente por su ID real
+        $device = Device::where('user_id', $request->user()->id)->find($deviceId);
 
         if (! $device) {
             return response()->json([
