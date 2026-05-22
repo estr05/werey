@@ -36,6 +36,7 @@ class DeviceController extends Controller
             'is_charging'     => $request->is_charging,
             'connection_type' => $request->connection_type,
             'activity'        => $request->activity,
+            'movement_type'   => $request->movement_type ?? 'STATIC',
             'screen_active'   => $request->screen_active,
         ]);
 

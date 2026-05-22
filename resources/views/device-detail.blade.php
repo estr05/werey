@@ -261,8 +261,8 @@
                         <div class="p-3 rounded-xl border border-white/5 bg-transparent opacity-80 hover:opacity-100 transition-opacity">
                             <div class="flex justify-between items-start mb-1">
                                 <span class="text-white font-bold text-[11px]">{{ $history->created_at->format('H:i') }} ({{ $history->created_at->diffForHumans(null, true, true) }} ago)</span>
-                                <span class="text-[10px] font-bold font-mono {{ $history->activity == 'moving' ? 'text-[#6CD400]' : 'text-slate-500' }}">
-                                    {{ strtoupper($history->activity) }}
+                                <span class="text-[10px] font-bold font-mono {{ ($history->activity == 'moving' || in_array($history->movement_type, ['WALKING', 'RUNNING', 'VEHICLE'])) ? 'text-[#6CD400]' : 'text-slate-500' }}">
+                                    {{ strtoupper($history->movement_type ?? $history->activity) }}
                                 </span>
                             </div>
                             <p class="text-[9px] text-slate-400 font-mono">
@@ -318,6 +318,7 @@
                 battery: {{ $point->battery_level ?? 100 }},
                 is_charging: {{ $point->is_charging ? 'true' : 'false' }},
                 activity: "{{ $point->activity ?? 'still' }}",
+                movement_type: "{{ $point->movement_type ?? 'STATIC' }}",
                 screen_active: {{ $point->screen_active ? 'true' : 'false' }},
                 time: "{{ $point->created_at->toIso8601String() }}",
                 label_time: "{{ $point->created_at->format('H:i:s') }}"
@@ -325,24 +326,101 @@
             @endforeach
         ];
 
-        // 5. Extraer puntos para la Polilínea (Ruta)
-        var pathPoints = telemetryHistory.map(function(item) {
-            return [item.lat, item.lng];
+        // 5. Preparar arquitectura de Estilos Dinámicos
+        var routeStyles = {
+            'WALKING': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' },
+            'RUNNING': { color: '#ff0055', weight: 6, opacity: 0.9, dashArray: '4, 8', dashOffset: '0', lineJoin: 'round' },
+            'VEHICLE': { color: '#6CD400', weight: 6, opacity: 0.9, dashArray: null, smoothFactor: 2.0, lineJoin: 'round' },
+            'STATIC':  { color: '#888888', weight: 4, opacity: 0.5, dashArray: '2, 4', lineJoin: 'round' },
+            'DEFAULT': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' } // fallback
+        };
+
+        // 6. Filtrado y Suavizado de Trayectorias
+        var sortedTelemetry = [...telemetryHistory].sort(function(a, b) {
+            return new Date(a.time) - new Date(b.time);
         });
 
-        // 6. Dibujar Ruta (Cian Neón de Alto Contraste)
-        if (pathPoints.length > 0) {
-            var polyline = L.polyline(pathPoints, {
-                color: '#00e5ff', 
-                weight: 5, 
-                opacity: 0.8,
-                lineJoin: 'round',
-                dashArray: '1, 10', // Punteado tecnológico
-                dashOffset: '10'
-            }).addTo(map);
+        // Función para detectar saltos rectos exagerados (filtro de anomalías GPS / altas velocidades imposibles)
+        function isAnomalousJump(p1, p2) {
+            var tDiff = (new Date(p2.time) - new Date(p1.time)) / 3600000; // horas
+            if (tDiff <= 0) return false;
             
-            // Auto-ajustar vista
-            map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+            var R = 6371; // km
+            var dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            var dLon = (p2.lng - p1.lng) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            var dist = R * c;
+            
+            var speed = dist / tDiff; // km/h
+            return speed > 200; // Más de 200 km/h se considera anómalo para estos sensores
+        }
+
+        var cleanTelemetry = [];
+        for (var i = 0; i < sortedTelemetry.length; i++) {
+            if (i > 0 && isAnomalousJump(cleanTelemetry[cleanTelemetry.length - 1], sortedTelemetry[i])) {
+                continue; // Omitir salto
+            }
+            cleanTelemetry.push(sortedTelemetry[i]);
+        }
+
+        // Dividir la ruta en segmentos según el tipo de movimiento
+        var segments = [];
+        var currentSegment = [];
+        var currentType = null;
+
+        cleanTelemetry.forEach(function(point) {
+            var type = point.movement_type || 'DEFAULT';
+            
+            if (currentType !== type) {
+                if (currentSegment.length > 0) {
+                    segments.push({ type: currentType, points: currentSegment });
+                }
+                // Conectar segmentos visualmente repitiendo el último punto
+                currentSegment = currentSegment.length > 0 ? [currentSegment[currentSegment.length - 1], point] : [point];
+                currentType = type;
+            } else {
+                currentSegment.push(point);
+            }
+        });
+        if (currentSegment.length > 0) {
+            segments.push({ type: currentType, points: currentSegment });
+        }
+
+        // Renderizado de las rutas diferenciando los trayectos
+        var polylineBounds = L.latLngBounds();
+        segments.forEach(function(segment) {
+            var style = routeStyles[segment.type] || routeStyles['DEFAULT'];
+            var rawPoints = segment.points.map(function(p) { return [p.lat, p.lng]; });
+            var smoothedPoints = rawPoints;
+            
+            // Suavizado de coordenadas (interpolación visual) para vehículos
+            if (segment.type === 'VEHICLE' && rawPoints.length >= 3) {
+                smoothedPoints = [rawPoints[0]];
+                for (var i = 1; i < rawPoints.length - 1; i++) {
+                    var prev = rawPoints[i-1];
+                    var curr = rawPoints[i];
+                    var next = rawPoints[i+1];
+                    // Reducción de líneas agresivas: promedio móvil
+                    var lat = (prev[0] + curr[0]*2 + next[0]) / 4;
+                    var lng = (prev[1] + curr[1]*2 + next[1]) / 4;
+                    smoothedPoints.push([lat, lng]);
+                }
+                smoothedPoints.push(rawPoints[rawPoints.length - 1]);
+            }
+            
+            if (smoothedPoints.length > 1) {
+                var pl = L.polyline(smoothedPoints, style).addTo(map);
+                polylineBounds.extend(pl.getBounds());
+            } else if (smoothedPoints.length === 1) {
+                polylineBounds.extend(smoothedPoints[0]);
+            }
+        });
+
+        if (cleanTelemetry.length > 0 && polylineBounds.isValid()) {
+            map.fitBounds(polylineBounds, { padding: [50, 50] });
         }
 
         // 7. Algoritmo para encontrar y reportar Paradas Estáticas (Still Stops)
@@ -565,8 +643,8 @@
         window.addEventListener('load', function() {
             setTimeout(function() {
                 map.invalidateSize();
-                if (pathPoints.length > 0) {
-                    map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+                if (cleanTelemetry.length > 0 && polylineBounds.isValid()) {
+                    map.fitBounds(polylineBounds, { padding: [50, 50] });
                 }
             }, 100);
         });

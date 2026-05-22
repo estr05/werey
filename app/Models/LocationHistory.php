@@ -20,6 +20,7 @@ class LocationHistory extends Model
         'is_charging',    // Capturado en la migración de detalles
         'connection_type', // Capturado en la migración de detalles
         'activity',
+        'movement_type',
         'screen_active'
     ];
 

@@ -36,6 +36,7 @@ class TelemetryController extends Controller
             'is_charging'     => ['nullable', 'boolean'],
             'connection_type' => ['nullable', 'string'],
             'activity'        => ['nullable', 'string'],
+            'movement_type'   => ['nullable', 'string'],
             'screen_active'   => ['nullable', 'boolean'],
         ]);
 
@@ -82,6 +83,7 @@ class TelemetryController extends Controller
             'is_charging'     => $validated['is_charging']    ?? false,
             'connection_type' => $validated['connection_type'] ?? null,
             'activity'        => $validated['activity']       ?? 'unknown',
+            'movement_type'   => $validated['movement_type']  ?? 'STATIC',
             'screen_active'   => $validated['screen_active']  ?? false,
         ]);
 
@@ -121,7 +123,7 @@ class TelemetryController extends Controller
             ->orderByDesc('created_at')
             ->limit($limit)
             ->get(['latitude', 'longitude', 'battery_level', 'is_charging',
-                   'connection_type', 'activity', 'screen_active', 'created_at']);
+                   'connection_type', 'activity', 'movement_type', 'screen_active', 'created_at']);
 
         return response()->json([
             'success' => true,
