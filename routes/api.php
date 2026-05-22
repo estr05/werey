@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\AuthApiController;
 use App\Http\Controllers\Api\V1\HandshakeController;
 use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\DeviceApiController;
+use App\Http\Controllers\Api\V1\LocationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -55,6 +56,10 @@ Route::prefix('v1')->group(function () {
             Route::post('/',                             [TelemetryController::class, 'update']);
             Route::get('/{identifier}/history',          [TelemetryController::class, 'history']);
         });
+
+        // Ubicación GPS — frames de posición desde el motor de rastreo de la app móvil
+        // La app (warey_movil) usa LocationRepository → POST /api/v1/location
+        Route::post('location', [LocationController::class, 'store']);
 
         // Dispositivos — listado y detalle
         Route::prefix('devices')->group(function () {
