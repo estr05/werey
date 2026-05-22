@@ -83,60 +83,87 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="devices-grid">
             @forelse($devices as $device)
-            <div class="bg-[#1c1e21] rounded-2xl border border-slate-800 p-6 hover:border-[#005d70]/50 transition-all flex flex-col">
+            @php $isPending = is_null($device->last_seen); @endphp
+            <div class="bg-[#1c1e21] rounded-2xl border {{ $isPending ? 'border-slate-700 border-dashed' : 'border-slate-800 hover:border-[#005d70]/50' }} p-6 transition-all flex flex-col">
                 <div class="flex justify-between items-start mb-6">
-                    <div class="bg-slate-800 size-12 rounded-xl flex items-center justify-center text-[#005d70]">
+                    <div class="bg-slate-800 size-12 rounded-xl flex items-center justify-center {{ $isPending ? 'text-slate-600' : 'text-[#005d70]' }}">
                         <span class="material-symbols-outlined">
-                            {{ $device->activity == 'moving' ? 'navigation' : 'smartphone' }}
+                            {{ $isPending ? 'phonelink_off' : ($device->activity == 'moving' ? 'navigation' : 'smartphone') }}
                         </span>
                     </div>
-                    <span class="{{ $device->activity == 'moving' ? 'bg-[#6CD400]/20 text-[#6CD400]' : 'bg-slate-800 text-slate-500' }} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5">
-                        <span class="size-1.5 rounded-full {{ $device->activity == 'moving' ? 'bg-[#6CD400] animate-pulse' : 'bg-slate-500' }}"></span>
-                        {{ $device->activity }}
-                    </span>
+                    @if($isPending)
+                        <span class="bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5">
+                            <span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                            En espera
+                        </span>
+                    @else
+                        <span class="{{ $device->activity == 'moving' ? 'bg-[#6CD400]/20 text-[#6CD400]' : 'bg-slate-800 text-slate-500' }} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5">
+                            <span class="size-1.5 rounded-full {{ $device->activity == 'moving' ? 'bg-[#6CD400] animate-pulse' : 'bg-slate-500' }}"></span>
+                            {{ $device->activity }}
+                        </span>
+                    @endif
                 </div>
 
-                <h3 class="font-extrabold text-xl mb-1 truncate text-white">{{ $device->alias }}</h3>
+                <h3 class="font-extrabold text-xl mb-1 truncate {{ $isPending ? 'text-slate-400' : 'text-white' }}">{{ $device->alias }}</h3>
                 <p class="text-xs text-slate-500 mb-6 font-medium">ID: {{ $device->identifier }}</p>
 
-                <div class="space-y-4 mb-6">
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center gap-2 text-slate-400">
-                            <span class="material-symbols-outlined text-lg">
-                                {{ $device->is_charging ? 'battery_charging_full' : 'battery_horiz_075' }}
-                            </span>
-                            <span class="text-sm font-bold">Battery</span>
+                @if($isPending)
+                    {{-- Estado pendiente: teléfono aún no conectado --}}
+                    <div class="flex-1 flex flex-col items-center justify-center py-4 gap-3 text-center mb-6">
+                        <span class="material-symbols-outlined text-3xl text-slate-600">pending</span>
+                        <p class="text-xs text-slate-500 leading-relaxed">
+                            Abre la app móvil e ingresa el código<br>
+                            <span class="font-mono text-amber-400 font-bold">{{ $device->identifier }}</span><br>
+                            para activar el dispositivo.
+                        </p>
+                    </div>
+                @else
+                    {{-- Estado activo: mostrando datos reales --}}
+                    <div class="space-y-4 mb-6">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2 text-slate-400">
+                                <span class="material-symbols-outlined text-lg">
+                                    {{ $device->is_charging ? 'battery_charging_full' : 'battery_horiz_075' }}
+                                </span>
+                                <span class="text-sm font-bold">Battery</span>
+                            </div>
+                            <span class="text-sm font-black text-white">{{ $device->battery_level ?? '--' }}%</span>
                         </div>
-                        <span class="text-sm font-black text-white">{{ $device->battery_level }}%</span>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="h-full {{ ($device->battery_level ?? 100) < 20 ? 'bg-red-500' : 'bg-[#6CD400]' }}"
+                                 style="width: {{ $device->battery_level ?? 0 }}%"></div>
+                        </div>
+                        
+                        <div class="flex justify-between items-center pt-2">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Network</span>
+                            <span class="text-[10px] font-mono text-[#005d70] bg-[#005d70]/10 px-2 py-0.5 rounded">
+                                {{ strtoupper($device->connection_type ?? 'Offline') }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                        <div class="h-full {{ $device->battery_level < 20 ? 'bg-red-500' : 'bg-[#6CD400]' }}" 
-                             style="width: {{ $device->battery_level }}%"></div>
-                    </div>
-                    
-                    <div class="flex justify-between items-center pt-2">
-                        <span class="text-[10px] font-bold text-slate-500 uppercase">Network</span>
-                        <span class="text-[10px] font-mono text-[#005d70] bg-[#005d70]/10 px-2 py-0.5 rounded">
-                            {{ strtoupper($device->connection_type ?? 'Offline') }}
-                        </span>
-                    </div>
-                </div>
+                @endif
                 
-                <div class="text-[10px] text-slate-600 font-mono mb-6 italic">
-                    LAST SYNC: {{ $device->last_seen ? $device->last_seen->diffForHumans() : 'NEVER' }}
+                <div class="text-[10px] {{ $isPending ? 'text-amber-500/50' : 'text-slate-600' }} font-mono mb-6 italic">
+                    {{ $isPending ? 'ESPERANDO PRIMERA CONEXIÓN...' : 'LAST SYNC: ' . $device->last_seen->diffForHumans() }}
                 </div>
 
                 <div class="mt-auto flex items-center gap-3">
-                    <a href="{{ route('device.show', $device->id) }}" 
-                       class="btn-manage flex-1 bg-[#005d70] text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">
-                        Manage Node
-                    </a>
+                    @if(!$isPending)
+                        <a href="{{ route('device.show', $device->id) }}"
+                           class="btn-manage flex-1 bg-[#005d70] text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">
+                            Manage Node
+                        </a>
+                    @else
+                        <span class="flex-1 bg-slate-800 text-slate-600 text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider cursor-not-allowed">
+                            Teléfono en Espera
+                        </span>
+                    @endif
                     
-                    <form action="{{ route('device.destroy', $device->id) }}" method="POST" 
+                    <form action="{{ route('device.destroy', $device->id) }}" method="POST"
                           onsubmit="return confirm('¿Confirmas la desconexión total del nodo {{ $device->alias }}?')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" 
+                        <button type="submit"
                                 class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-white transition-all">
                             <span class="material-symbols-outlined text-xl">delete</span>
                         </button>

@@ -17,13 +17,12 @@ class DashboardController extends Controller
         // 1. Obtenemos solo los dispositivos vinculados al usuario logueado
         $devices = $user->devices;
 
-        // 2. Calculamos estadísticas en tiempo real para Warey
+        // 2. Calculamos estadísticas — solo dispositivos que ya han enviado telemetría real
         $stats = [
-            'total' => $devices->count(),
-            // Se considera 'online' si reportó en los últimos 5 minutos
-            'online' => $devices->where('last_seen', '>=', now()->subMinutes(5))->count(),
+            'total'  => $devices->count(),
+            'online' => $devices->whereNotNull('last_seen')->where('last_seen', '>=', now()->subMinutes(5))->count(),
             'moving' => $devices->where('activity', 'moving')->count(),
-            'alerts' => $devices->where('battery_level', '<', 20)->count(),
+            'alerts' => $devices->whereNotNull('battery_level')->where('battery_level', '<', 20)->count(),
         ];
 
         return view('dashboard', compact('devices', 'stats'));
@@ -41,25 +40,32 @@ class DashboardController extends Controller
         }
 
         $request->validate([
-            'alias' => ['required', 'string', 'max:255'],
-            'identifier' => ['required', 'string', 'max:255', 'unique:devices,identifier'],
+            'alias'      => ['required', 'string', 'max:255'],
+            'identifier' => ['required', 'string', 'max:255'],
         ]);
 
-        // Crear dispositivo en estado de desarrollo
+        // Verificar si el identificador ya existe en la base de datos
+        $existing = Device::where('identifier', $request->identifier)->first();
+
+        if ($existing) {
+            if ($existing->user_id === $user->id) {
+                // El código ya pertenece a este usuario: simplemente actualizar alias
+                $existing->update(['alias' => $request->alias]);
+                return redirect()->route('dashboard')->with('success', 'Dispositivo actualizado correctamente.');
+            }
+            // El código ya está en uso por otra cuenta
+            return redirect()->route('dashboard')->withErrors([
+                'identifier' => 'Este código ya está siendo utilizado por otra cuenta.'
+            ]);
+        }
+
+        // Crear dispositivo SIN datos mock — en espera de primera telemetría real
         $user->devices()->create([
-            'alias' => $request->alias,
+            'alias'      => $request->alias,
             'identifier' => $request->identifier,
-            'latitude' => 19.4326, // Coordenadas default (Ej. CDMX)
-            'longitude' => -99.1332,
-            'battery_level' => 100,
-            'is_charging' => false,
-            'connection_type' => 'wifi',
-            'activity' => 'still',
-            'screen_active' => false,
-            'last_seen' => now(),
         ]);
 
-        return redirect()->route('dashboard')->with('success', 'Dispositivo vinculado con éxito.');
+        return redirect()->route('dashboard')->with('success', '¡Dispositivo registrado! Esperando vinculación desde la app móvil.');
     }
 
     public function show(Request $request, $id)
