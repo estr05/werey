@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\V1\HandshakeController;
 use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\DeviceApiController;
 use App\Http\Controllers\Api\V1\LocationController;
+use App\Http\Controllers\Api\V1\DeviceStatusController;
+use App\Http\Controllers\Api\V1\SafePlaceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,14 +59,25 @@ Route::prefix('v1')->group(function () {
             Route::get('/{identifier}/history',          [TelemetryController::class, 'history']);
         });
 
+        // Estado del dispositivo — batería, conectividad, señal, tracking_state
+        // La app (warey_movil) usa DeviceStatusRepository → POST /api/v1/device-status
+        // SEPARADO del endpoint /telemetry: NO requiere latitud/longitud
+        Route::post('device-status', [DeviceStatusController::class, 'store']);
+
         // Ubicación GPS — frames de posición desde el motor de rastreo de la app móvil
         // La app (warey_movil) usa LocationRepository → POST /api/v1/location
         Route::post('location', [LocationController::class, 'store']);
 
         // Dispositivos — listado y detalle
+        // Dispositivos — listado y detalle
         Route::prefix('devices')->group(function () {
             Route::get('/',              [DeviceApiController::class, 'index']);
             Route::get('/{identifier}', [DeviceApiController::class, 'show']);
+
+            // Safe Places — zonas seguras del dispositivo
+            Route::prefix('{identifier}/safe-places')->group(function () {
+                Route::get('/', [SafePlaceController::class, 'index']);
+            });
         });
 
     });

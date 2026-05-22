@@ -48,7 +48,8 @@ class HandshakeController extends Controller
             'success' => true,
             'message' => 'Dispositivo vinculado y activado correctamente.',
             'data'    => [
-                'token' => $token,
+                'token'             => $token,
+                'device_identifier' => $device->identifier,
             ],
         ], 200);
     }

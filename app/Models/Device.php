@@ -22,6 +22,11 @@ class Device extends Model
         'connection_type',
         'activity',
         'screen_active',
+        'signal_strength',
+        'has_internet',
+        'tracking_state',
+        'activity_status',
+        'last_status_at',
         'last_seen'
     ];
 
@@ -32,9 +37,11 @@ class Device extends Model
     protected $casts = [
         'is_charging'   => 'boolean', // Convierte 0/1 de la DB a true/false
         'screen_active' => 'boolean',
+        'has_internet'  => 'boolean',
         'latitude'      => 'double',
         'longitude'     => 'double',
-        'last_seen'     => 'datetime', // Permite usar funciones de fecha como diffForHumans()
+        'last_seen'      => 'datetime', // Permite usar funciones de fecha como diffForHumans()
+        'last_status_at' => 'datetime',
     ];
 
     /**
