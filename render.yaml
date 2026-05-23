@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: warey-backend
+    runtime: docker
+    plan: free # Puedes cambiarlo a 'starter' si necesitas más recursos
+    envVars:
+      # Laravel Core Settings
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false # Lo configuras manualmente en el dashboard de Render (ej. base64:...)
+      - key: APP_URL
+        sync: false # La URL que te asigne Render (ej. https://warey-backend.onrender.com)
+      
+      # Redirigir logs a la consola de Render
+      - key: LOG_CHANNEL
+        value: stderr
+
+      # Drivers
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: sync # O database si configuras un worker
+
+      # Configuración de Base de Datos (Actualmente MySQL de Aiven, cámbialo a pgsql para Supabase)
+      - key: DB_CONNECTION
+        value: mysql
+      - key: DB_HOST
+        value: mysql-2341c9ac-estradaperezneyser-3a36.i.aivencloud.com
+      - key: DB_PORT
+        value: "23900"
+      - key: DB_DATABASE
+        value: defaultdb
+      - key: DB_USERNAME
+        value: avnadmin
+      - key: DB_PASSWORD
+        sync: false # Lo configuras manualmente en el dashboard de Render
