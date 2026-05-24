@@ -182,6 +182,36 @@
                             </span>
                         </div>
                         @endif
+
+                        {{-- Velocidad --}}
+                        @if($device->speed_kmh !== null)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Velocidad</span>
+                            <span class="text-[9px] font-mono text-emerald-400">
+                                {{ number_format($device->speed_kmh, 1) }} km/h
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Intervalo --}}
+                        @if($device->intervalo_aplicado)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Intervalo</span>
+                            <span class="text-[9px] font-mono text-cyan-400">
+                                Cada {{ $device->intervalo_aplicado }}s
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Motivo --}}
+                        @if($device->motivo)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Motivo</span>
+                            <span class="text-[9px] font-mono text-purple-400">
+                                {{ strtoupper(str_replace('_', ' ', $device->motivo)) }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
                 @endif
                 
@@ -495,9 +525,32 @@
                                 ${device.activity_status}
                             </span>
                         </div>` : ''}
+
+                        ${device.speed_kmh !== null && device.speed_kmh !== undefined ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Velocidad</span>
+                            <span class="text-[9px] font-mono text-emerald-400">
+                                ${parseFloat(device.speed_kmh).toFixed(1)} km/h
+                            </span>
+                        </div>` : ''}
+
+                        ${device.intervalo_aplicado ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Intervalo</span>
+                            <span class="text-[9px] font-mono text-cyan-400">
+                                Cada ${device.intervalo_aplicado}s
+                            </span>
+                        </div>` : ''}
+
+                        ${device.motivo ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Motivo</span>
+                            <span class="text-[9px] font-mono text-purple-400">
+                                ${device.motivo.replace(/_/g, ' ').toUpperCase()}
+                            </span>
+                        </div>` : ''}
                     </div>
                 `}
-
                 <div class="text-[10px] ${isPending ? 'text-amber-500/50' : 'text-slate-600'} font-mono mb-6 italic">
                     ${isPending ? 'ESPERANDO PRIMERA CONEXIÓN...' : 'LAST SYNC: ' + lastSeen}
                 </div>

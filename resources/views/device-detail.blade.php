@@ -135,6 +135,36 @@
                                 {{ $device->screen_active ? 'Activa' : 'Inactiva' }}
                             </span>
                         </div>
+
+                        {{-- Velocidad --}}
+                        @if($device->speed_kmh !== null)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Velocidad</span>
+                            <span class="text-[9px] font-mono text-emerald-400">
+                                {{ number_format($device->speed_kmh, 1) }} km/h
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Frecuencia de Envío --}}
+                        @if($device->intervalo_aplicado)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Frecuencia</span>
+                            <span class="text-[9px] font-mono text-cyan-400">
+                                Cada {{ $device->intervalo_aplicado }}s
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Rango/Motivo --}}
+                        @if($device->motivo)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Categoría</span>
+                            <span class="text-[9px] font-mono text-purple-400">
+                                {{ strtoupper(str_replace('_', ' ', $device->motivo)) }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
 
                     <!-- Alerta de Zona Segura -->
@@ -314,6 +344,13 @@
                             <p class="text-[9px] text-slate-400 font-mono">
                                 Batería: {{ $history->battery_level }}% • Red: {{ strtoupper($history->connection_type ?? 'N/A') }}
                             </p>
+                            @if($history->speed_kmh !== null || $history->intervalo_aplicado)
+                            <p class="text-[9px] text-slate-500 font-mono mt-0.5">
+                                @if($history->speed_kmh !== null) Velocidad: <span class="text-emerald-400">{{ number_format($history->speed_kmh, 1) }} km/h</span> @endif
+                                @if($history->intervalo_aplicado) • Frecuencia: <span class="text-cyan-400">{{ $history->intervalo_aplicado }}s</span> @endif
+                                @if($history->motivo) • Motivo: <span class="text-purple-400">{{ strtoupper(str_replace('_', ' ', $history->motivo)) }}</span> @endif
+                            </p>
+                            @endif
                         </div>
                         @empty
                         <div class="text-center py-8 text-slate-600 text-xs italic">

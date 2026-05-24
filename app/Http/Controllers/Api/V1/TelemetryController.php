@@ -55,23 +55,28 @@ class TelemetryController extends Controller
         // Flutter normalmente envía JSON en camelCase (batteryLevel),
         // así que los unimos al formato snake_case que Laravel espera.
         $request->merge([
-            'battery_level'   => $request->input('batteryLevel', $request->input('battery_level')),
-            'is_charging'     => $request->input('isCharging', $request->input('is_charging')),
-            'connection_type' => $request->input('connectionType', $request->input('connection_type')),
-            'movement_type'   => $request->input('movementType', $request->input('movement_type')),
-            'screen_active'   => $request->input('screenActive', $request->input('screen_active')),
-            'signal_strength' => $request->input('signalStrength', $request->input('signal_strength')),
-            'has_internet'    => $request->input('hasInternet', $request->input('has_internet')),
-            'tracking_state'  => $request->input('trackingState', $request->input('tracking_state')),
-            'activity_status' => $request->input('activityStatus', $request->input('activity_status')),
+            'battery_level'      => $request->input('batteryLevel', $request->input('battery_level')),
+            'is_charging'        => $request->input('isCharging', $request->input('is_charging')),
+            'connection_type'    => $request->input('connectionType', $request->input('connection_type')),
+            'movement_type'      => $request->input('movementType', $request->input('movement_type')),
+            'screen_active'      => $request->input('screenActive', $request->input('screen_active')),
+            'signal_strength'    => $request->input('signalStrength', $request->input('signal_strength')),
+            'has_internet'       => $request->input('hasInternet', $request->input('has_internet')),
+            'tracking_state'     => $request->input('trackingState', $request->input('tracking_state')),
+            'activity_status'    => $request->input('activityStatus', $request->input('activity_status')),
             // NOTA: activity (still/moving de GPS) NO debe heredar de activity_status
             // (IDLE/CHARGING/WALKING del estado del dispositivo). Son conceptos separados.
-            'activity'        => $request->input('activity'),
+            'activity'           => $request->input('activity'),
             // captured_at admite 3 orígenes:
             //   1. capturedAt (camelCase de Flutter DeviceStatusFrame)
             //   2. captured_at (snake_case estándar)
             //   3. created_at  (enviado por TelemetryEngine → mala nomenclatura en la app)
-            'captured_at'     => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
+            'captured_at'        => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
+            'speed'              => $request->input('speed'),
+            'smoothed_speed'     => $request->input('smoothedSpeed', $request->input('smoothed_speed')),
+            'speed_kmh'          => $request->input('speedKmh', $request->input('speed_kmh')),
+            'intervalo_aplicado' => $request->input('intervaloAplicado', $request->input('intervalo_aplicado')),
+            'motivo'             => $request->input('motivo'),
         ]);
 
         // ── 2. Validación ────────────────────────────────────────────────────
@@ -79,20 +84,25 @@ class TelemetryController extends Controller
         // del dispositivo que NO incluyen coordenadas GPS.
         $validated = $request->validate([
             // GPS (opcional — presente solo en frames completos)
-            'latitude'        => ['nullable', 'numeric', 'between:-90,90'],
-            'longitude'       => ['nullable', 'numeric', 'between:-180,180'],
+            'latitude'           => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'          => ['nullable', 'numeric', 'between:-180,180'],
             // Estado del dispositivo
-            'battery_level'   => ['nullable', 'integer', 'between:0,100'],
-            'is_charging'     => ['nullable', 'boolean'],
-            'connection_type' => ['nullable', 'string'],
-            'signal_strength' => ['nullable', 'integer', 'between:0,4'],
-            'has_internet'    => ['nullable', 'boolean'],
-            'tracking_state'  => ['nullable', 'string'],
-            'activity_status' => ['nullable', 'string'],
-            'activity'        => ['nullable', 'string'],
-            'movement_type'   => ['nullable', 'string'],
-            'screen_active'   => ['nullable', 'boolean'],
-            'captured_at'     => ['nullable', 'string'],
+            'battery_level'      => ['nullable', 'integer', 'between:0,100'],
+            'is_charging'        => ['nullable', 'boolean'],
+            'connection_type'    => ['nullable', 'string'],
+            'signal_strength'    => ['nullable', 'integer', 'between:0,4'],
+            'has_internet'       => ['nullable', 'boolean'],
+            'tracking_state'     => ['nullable', 'string'],
+            'activity_status'    => ['nullable', 'string'],
+            'activity'           => ['nullable', 'string'],
+            'movement_type'      => ['nullable', 'string'],
+            'screen_active'      => ['nullable', 'boolean'],
+            'captured_at'        => ['nullable', 'string'],
+            'speed'              => ['nullable', 'numeric'],
+            'smoothed_speed'     => ['nullable', 'numeric'],
+            'speed_kmh'          => ['nullable', 'numeric'],
+            'intervalo_aplicado' => ['nullable', 'integer'],
+            'motivo'             => ['nullable', 'string'],
         ]);
 
         // ── 3. Autenticación del dispositivo ─────────────────────────────────
@@ -135,6 +145,61 @@ class TelemetryController extends Controller
         ]);
 
         // ── 5. Actualizar estado del dispositivo ─────────────────────────────
+        $speedKmh = $validated['speed_kmh'] ?? null;
+        $intervalo = $validated['intervalo_aplicado'] ?? null;
+        $motivo = $validated['motivo'] ?? null;
+
+        if ($hasGps) {
+            if ($speedKmh === null) {
+                $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
+                $speedKmh = $speedMs * 3.6;
+            }
+
+            if ($intervalo === null) {
+                $isSafe = str_contains($validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE', 'SAFE');
+                if ($isSafe) {
+                    if ($speedKmh < 2.0) {
+                        $intervalo = 30;
+                    } else if ($speedKmh < 7.0) {
+                        $intervalo = 5;
+                    } else if ($speedKmh < 15.0) {
+                        $intervalo = 4;
+                    } else if ($speedKmh < 80.0) {
+                        $intervalo = 3;
+                    } else {
+                        $intervalo = 2;
+                    }
+                } else {
+                    if ($speedKmh < 2.0) {
+                        $intervalo = 10;
+                    } else if ($speedKmh < 7.0) {
+                        $intervalo = 5;
+                    } else if ($speedKmh < 15.0) {
+                        $intervalo = 4;
+                    } else if ($speedKmh < 80.0) {
+                        $intervalo = 3;
+                    } else {
+                        $intervalo = 2;
+                    }
+                }
+            }
+
+            if ($motivo === null) {
+                if ($speedKmh < 2.0) {
+                    $isSafe = str_contains($validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE', 'SAFE');
+                    $motivo = $isSafe ? 'safe_static_slow' : 'unsafe_static_slow';
+                } else if ($speedKmh < 7.0) {
+                    $motivo = 'walking';
+                } else if ($speedKmh < 15.0) {
+                    $motivo = 'running';
+                } else if ($speedKmh < 80.0) {
+                    $motivo = 'vehicle';
+                } else {
+                    $motivo = 'high_speed';
+                }
+            }
+        }
+
         $deviceUpdate = [
             'battery_level'   => $validated['battery_level'] ?? $device->battery_level,
             'is_charging'     => $validated['is_charging']   ?? $device->is_charging,
@@ -156,6 +221,9 @@ class TelemetryController extends Controller
         if ($hasGps) {
             $deviceUpdate['latitude']  = $validated['latitude'];
             $deviceUpdate['longitude'] = $validated['longitude'];
+            $deviceUpdate['speed_kmh'] = $speedKmh;
+            $deviceUpdate['intervalo_aplicado'] = $intervalo;
+            $deviceUpdate['motivo'] = $motivo;
         }
 
         $device->update($deviceUpdate);
@@ -163,16 +231,19 @@ class TelemetryController extends Controller
         // ── 6. Crear LocationHistory SOLO si hay coordenadas GPS ─────────────
         if ($hasGps) {
             LocationHistory::create([
-                'device_id'       => $device->id,
-                'latitude'        => $validated['latitude'],
-                'longitude'       => $validated['longitude'],
-                'battery_level'   => $validated['battery_level']  ?? $device->battery_level,
-                'is_charging'     => $validated['is_charging']    ?? $device->is_charging,
-                'connection_type' => $validated['connection_type'] ?? $device->connection_type,
+                'device_id'          => $device->id,
+                'latitude'           => $validated['latitude'],
+                'longitude'          => $validated['longitude'],
+                'battery_level'      => $validated['battery_level']  ?? $device->battery_level,
+                'is_charging'        => $validated['is_charging']    ?? $device->is_charging,
+                'connection_type'    => $validated['connection_type'] ?? $device->connection_type,
                 // activity en LocationHistory = movimiento GPS (still/moving), NO activity_status
-                'activity'        => $validated['activity']       ?? 'unknown',
-                'movement_type'   => $validated['movement_type']  ?? 'STATIC',
-                'screen_active'   => $validated['screen_active']  ?? $device->screen_active,
+                'activity'           => $validated['activity']       ?? 'unknown',
+                'movement_type'      => $validated['movement_type']  ?? 'STATIC',
+                'screen_active'      => $validated['screen_active']  ?? $device->screen_active,
+                'speed_kmh'          => $speedKmh,
+                'intervalo_aplicado' => $intervalo,
+                'motivo'             => $motivo,
             ]);
         }
 

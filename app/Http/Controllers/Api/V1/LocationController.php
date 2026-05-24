@@ -42,18 +42,32 @@ class LocationController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // Normalizar camelCase → snake_case para compatibilidad con la app móvil
+        $request->merge([
+            'movement_type'      => $request->input('movementType', $request->input('movement_type')),
+            'smoothed_speed'     => $request->input('smoothedSpeed', $request->input('smoothed_speed')),
+            'captured_at'        => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
+            'speed_kmh'          => $request->input('speedKmh', $request->input('speed_kmh')),
+            'intervalo_aplicado' => $request->input('intervaloAplicado', $request->input('intervalo_aplicado')),
+            'is_safe_zone'       => $request->input('isSafeZone', $request->input('is_safe_zone', $request->input('isSafe', $request->input('is_safe')))),
+            'zone_name'          => $request->input('zoneName', $request->input('zone_name')),
+        ]);
+
         $validated = $request->validate([
-            'latitude'       => ['required', 'numeric', 'between:-90,90'],
-            'longitude'      => ['required', 'numeric', 'between:-180,180'],
-            'accuracy'       => ['nullable', 'numeric'],
-            'speed'          => ['nullable', 'numeric'],
-            'smoothed_speed' => ['nullable', 'numeric'],
-            'altitude'       => ['nullable', 'numeric'],
-            'movement_type'  => ['nullable', 'string', 'in:STATIC,WALKING,RUNNING,VEHICLE'],
-            'tracking_state' => ['nullable', 'string'],
-            'is_safe_zone'   => ['nullable', 'boolean'],
-            'zone_name'      => ['nullable', 'string'],
-            'captured_at'    => ['nullable', 'string'],
+            'latitude'           => ['required', 'numeric', 'between:-90,90'],
+            'longitude'          => ['required', 'numeric', 'between:-180,180'],
+            'accuracy'           => ['nullable', 'numeric'],
+            'speed'              => ['nullable', 'numeric'],
+            'smoothed_speed'     => ['nullable', 'numeric'],
+            'altitude'           => ['nullable', 'numeric'],
+            'movement_type'      => ['nullable', 'string', 'in:STATIC,WALKING,RUNNING,VEHICLE'],
+            'tracking_state'     => ['nullable', 'string'],
+            'is_safe_zone'       => ['nullable', 'boolean'],
+            'zone_name'          => ['nullable', 'string'],
+            'captured_at'        => ['nullable', 'string'],
+            'speed_kmh'          => ['nullable', 'numeric'],
+            'intervalo_aplicado' => ['nullable', 'integer'],
+            'motivo'             => ['nullable', 'string'],
         ]);
 
         // Resolver el dispositivo desde el token de Sanctum (device_token:<id>)
@@ -78,34 +92,96 @@ class LocationController extends Controller
 
         $movementType = $validated['movement_type'] ?? 'STATIC';
 
+        // Calcular speed_kmh, intervalo_aplicado y motivo si no se envían
+        $speedKmh = $validated['speed_kmh'] ?? null;
+        if ($speedKmh === null) {
+            $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
+            $speedKmh = $speedMs * 3.6;
+        }
+
+        $intervalo = $validated['intervalo_aplicado'] ?? null;
+        if ($intervalo === null) {
+            $isSafe = $validated['is_safe_zone'] ?? true;
+            if ($isSafe) {
+                if ($speedKmh < 2.0) {
+                    $intervalo = 30;
+                } else if ($speedKmh < 7.0) {
+                    $intervalo = 5;
+                } else if ($speedKmh < 15.0) {
+                    $intervalo = 4;
+                } else if ($speedKmh < 80.0) {
+                    $intervalo = 3;
+                } else {
+                    $intervalo = 2;
+                }
+            } else {
+                if ($speedKmh < 2.0) {
+                    $intervalo = 10;
+                } else if ($speedKmh < 7.0) {
+                    $intervalo = 5;
+                } else if ($speedKmh < 15.0) {
+                    $intervalo = 4;
+                } else if ($speedKmh < 80.0) {
+                    $intervalo = 3;
+                } else {
+                    $intervalo = 2;
+                }
+            }
+        }
+
+        $motivo = $validated['motivo'] ?? null;
+        if ($motivo === null) {
+            if ($speedKmh < 2.0) {
+                $isSafe = $validated['is_safe_zone'] ?? true;
+                $motivo = $isSafe ? 'safe_static_slow' : 'unsafe_static_slow';
+            } else if ($speedKmh < 7.0) {
+                $motivo = 'walking';
+            } else if ($speedKmh < 15.0) {
+                $motivo = 'running';
+            } else if ($speedKmh < 80.0) {
+                $motivo = 'vehicle';
+            } else {
+                $motivo = 'high_speed';
+            }
+        }
+
         Log::info('[Location] Frame GPS recibido', [
-            'device_id'    => $device->id,
-            'latitude'     => $validated['latitude'],
-            'longitude'    => $validated['longitude'],
-            'movement_type' => $movementType,
-            'accuracy'     => $validated['accuracy'] ?? null,
+            'device_id'          => $device->id,
+            'latitude'           => $validated['latitude'],
+            'longitude'          => $validated['longitude'],
+            'movement_type'      => $movementType,
+            'accuracy'           => $validated['accuracy'] ?? null,
+            'speed_kmh'          => $speedKmh,
+            'intervalo_aplicado' => $intervalo,
+            'motivo'             => $motivo,
         ]);
 
         // 1. Actualizar posición y estado actual del dispositivo
         //    También refrescamos last_seen para mantener el dispositivo como "online"
         $device->update([
-            'latitude'   => $validated['latitude'],
-            'longitude'  => $validated['longitude'],
-            'activity'   => strtolower($movementType),
-            'last_seen'  => now(),
+            'latitude'           => $validated['latitude'],
+            'longitude'          => $validated['longitude'],
+            'activity'           => strtolower($movementType),
+            'speed_kmh'          => $speedKmh,
+            'intervalo_aplicado' => $intervalo,
+            'motivo'             => $motivo,
+            'last_seen'          => now(),
         ]);
 
         // 2. Guardar en historial para el mapa del dashboard
         LocationHistory::create([
-            'device_id'       => $device->id,
-            'latitude'        => $validated['latitude'],
-            'longitude'       => $validated['longitude'],
-            'battery_level'   => $device->battery_level,       // Hereda del último device-status
-            'is_charging'     => $device->is_charging,         // Hereda del último device-status
-            'connection_type' => $device->connection_type,     // Hereda del último device-status
-            'activity'        => strtolower($movementType),
-            'movement_type'   => $movementType,
-            'screen_active'   => $device->screen_active,       // Hereda del último device-status
+            'device_id'          => $device->id,
+            'latitude'           => $validated['latitude'],
+            'longitude'          => $validated['longitude'],
+            'battery_level'      => $device->battery_level,       // Hereda del último device-status
+            'is_charging'        => $device->is_charging,         // Hereda del último device-status
+            'connection_type'    => $device->connection_type,     // Hereda del último device-status
+            'activity'           => strtolower($movementType),
+            'movement_type'      => $movementType,
+            'screen_active'      => $device->screen_active,       // Hereda del último device-status
+            'speed_kmh'          => $speedKmh,
+            'intervalo_aplicado' => $intervalo,
+            'motivo'             => $motivo,
         ]);
 
         return response()->json([

@@ -26,6 +26,9 @@ class Device extends Model
         'has_internet',
         'tracking_state',
         'activity_status',
+        'speed_kmh',
+        'intervalo_aplicado',
+        'motivo',
         'last_status_at',
         'last_seen'
     ];
@@ -40,6 +43,8 @@ class Device extends Model
         'has_internet'  => 'boolean',
         'latitude'      => 'double',
         'longitude'     => 'double',
+        'speed_kmh'     => 'double',
+        'intervalo_aplicado' => 'integer',
         'last_seen'      => 'datetime', // Permite usar funciones de fecha como diffForHumans()
         'last_status_at' => 'datetime',
     ];

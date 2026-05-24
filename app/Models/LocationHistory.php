@@ -21,7 +21,10 @@ class LocationHistory extends Model
         'connection_type', // Capturado en la migración de detalles
         'activity',
         'movement_type',
-        'screen_active'
+        'screen_active',
+        'speed_kmh',
+        'intervalo_aplicado',
+        'motivo'
     ];
 
     /**
@@ -34,6 +37,8 @@ class LocationHistory extends Model
         'latitude'    => 'double',
         'longitude'   => 'double',
         'battery_level' => 'integer',
+        'speed_kmh'   => 'double',
+        'intervalo_aplicado' => 'integer',
         'created_at'  => 'datetime',
     ];
 
