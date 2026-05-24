@@ -30,6 +30,16 @@ class TelemetryController extends Controller
      */
     public function update(Request $request): JsonResponse
     {
+        // Flutter normalmente envía JSON en camelCase (batteryLevel),
+        // así que los unimos al formato snake_case que Laravel espera.
+        $request->merge([
+            'battery_level'   => $request->input('batteryLevel', $request->input('battery_level')),
+            'is_charging'     => $request->input('isCharging', $request->input('is_charging')),
+            'connection_type' => $request->input('connectionType', $request->input('connection_type')),
+            'movement_type'   => $request->input('movementType', $request->input('movement_type')),
+            'screen_active'   => $request->input('screenActive', $request->input('screen_active')),
+        ]);
+
         $validated = $request->validate([
             'latitude'        => ['required', 'numeric', 'between:-90,90'],
             'longitude'       => ['required', 'numeric', 'between:-180,180'],
