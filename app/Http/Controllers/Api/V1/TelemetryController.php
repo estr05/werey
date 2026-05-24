@@ -13,23 +13,45 @@ class TelemetryController extends Controller
 {
     /**
      * Recibe el paquete de telemetría completo desde la app móvil.
-     * Actualiza el estado actual del dispositivo y guarda un registro en el historial.
+     *
+     * Este endpoint es el principal punto de entrada para TODOS los datos
+     * que envía la app móvil, tanto frames completos de GPS (con lat/lng)
+     * como frames de estado del dispositivo (sin lat/lng, solo batería,
+     * conectividad, señal, etc.).
+     *
+     * NOTA: La app móvil (warey_movil) envía desde 3 orígenes distintos:
+     *   1. TelemetryEngine   → lat/lng + battery + connection → funciona OK
+     *   2. DeviceStatusRepo  → battery + señal + tracking_state + activity_status
+     *                         (SIN lat/lng) → este controlador ahora lo acepta
+     *   3. LocationRepository → frames GPS detallados → POST /api/v1/location
      *
      * POST /api/v1/telemetry
      * Header: Authorization: Bearer <token>
-     * Body: {
-     *   "identifier"     : "uuid-del-dispositivo",
-     *   "latitude"       : 14.064,
-     *   "longitude"      : -87.206,
-     *   "battery_level"  : 85,
-     *   "is_charging"    : false,
-     *   "connection_type": "wifi",
-     *   "activity"       : "still",
-     *   "screen_active"  : true
+     * Body (completo con GPS): {
+     *   "latitude"        : 14.064,
+     *   "longitude"       : -87.206,
+     *   "battery_level"   : 85,
+     *   "is_charging"     : false,
+     *   "connection_type" : "wifi",
+     *   "activity"        : "still",
+     *   "screen_active"   : true,
+     *   "movement_type"   : "STATIC"
+     * }
+     * Body (solo estado de dispositivo, SIN lat/lng): {
+     *   "battery_level"   : 85,
+     *   "is_charging"     : false,
+     *   "connection_type" : "wifi",
+     *   "signal_strength" : 4,
+     *   "has_internet"    : true,
+     *   "tracking_state"  : "UNSAFE_STATIC",
+     *   "activity_status" : "IDLE",
+     *   "screen_active"   : true,
+     *   "captured_at"     : "2026-05-22T14:00:00.000Z"
      * }
      */
     public function update(Request $request): JsonResponse
     {
+        // ── 1. Normalizar camelCase → snake_case ─────────────────────────────
         // Flutter normalmente envía JSON en camelCase (batteryLevel),
         // así que los unimos al formato snake_case que Laravel espera.
         $request->merge([
@@ -38,19 +60,37 @@ class TelemetryController extends Controller
             'connection_type' => $request->input('connectionType', $request->input('connection_type')),
             'movement_type'   => $request->input('movementType', $request->input('movement_type')),
             'screen_active'   => $request->input('screenActive', $request->input('screen_active')),
+            'signal_strength' => $request->input('signalStrength', $request->input('signal_strength')),
+            'has_internet'    => $request->input('hasInternet', $request->input('has_internet')),
+            'tracking_state'  => $request->input('trackingState', $request->input('tracking_state')),
+            'activity_status' => $request->input('activityStatus', $request->input('activity_status')),
+            // NOTA: activity (still/moving de GPS) NO debe heredar de activity_status
+            // (IDLE/CHARGING/WALKING del estado del dispositivo). Son conceptos separados.
+            'activity'        => $request->input('activity'),
         ]);
 
+        // ── 2. Validación ────────────────────────────────────────────────────
+        // latitude/longitude son OPCIONALES para permitir frames de estado
+        // del dispositivo que NO incluyen coordenadas GPS.
         $validated = $request->validate([
-            'latitude'        => ['required', 'numeric', 'between:-90,90'],
-            'longitude'       => ['required', 'numeric', 'between:-180,180'],
+            // GPS (opcional — presente solo en frames completos)
+            'latitude'        => ['nullable', 'numeric', 'between:-90,90'],
+            'longitude'       => ['nullable', 'numeric', 'between:-180,180'],
+            // Estado del dispositivo
             'battery_level'   => ['nullable', 'integer', 'between:0,100'],
             'is_charging'     => ['nullable', 'boolean'],
             'connection_type' => ['nullable', 'string'],
+            'signal_strength' => ['nullable', 'integer', 'between:0,4'],
+            'has_internet'    => ['nullable', 'boolean'],
+            'tracking_state'  => ['nullable', 'string'],
+            'activity_status' => ['nullable', 'string'],
             'activity'        => ['nullable', 'string'],
             'movement_type'   => ['nullable', 'string'],
             'screen_active'   => ['nullable', 'boolean'],
+            'captured_at'     => ['nullable', 'string'],
         ]);
 
+        // ── 3. Autenticación del dispositivo ─────────────────────────────────
         $token = $request->user()->currentAccessToken();
         
         if (!$token || !str_contains($token->name, 'device_token:')) {
@@ -60,10 +100,7 @@ class TelemetryController extends Controller
             ], 403);
         }
 
-        // Extraer el ID interno del dispositivo del nombre del token de Sanctum
         $deviceId = str_replace('device_token:', '', $token->name);
-
-        // Buscar el dispositivo activo correspondiente por su ID real
         $device = Device::where('user_id', $request->user()->id)->find($deviceId);
 
         if (! $device) {
@@ -73,42 +110,66 @@ class TelemetryController extends Controller
             ], 404);
         }
 
+        // ── 4. Log del payload recibido ──────────────────────────────────────
+        $hasGps = $validated['latitude'] !== null && $validated['longitude'] !== null;
         Log::info('[Telemetry] Paquete recibido', [
-            'device_id'      => $device->id,
-            'latitude'       => $validated['latitude'],
-            'longitude'      => $validated['longitude'],
-            'battery_level'  => $validated['battery_level'] ?? null,
-            'is_charging'    => $validated['is_charging'] ?? null,
-            'connection_type'=> $validated['connection_type'] ?? null,
-            'activity'       => $validated['activity'] ?? null,
-            'movement_type'  => $validated['movement_type'] ?? null,
-            'screen_active'  => $validated['screen_active'] ?? null,
-        ]);
-
-        // 1. Actualizar el estado ACTUAL del dispositivo (última posición conocida)
-        $device->update([
+            'device_id'       => $device->id,
+            'has_gps'         => $hasGps,
             'latitude'        => $validated['latitude'],
             'longitude'       => $validated['longitude'],
+            'battery_level'   => $validated['battery_level'] ?? null,
+            'is_charging'     => $validated['is_charging'] ?? null,
+            'connection_type' => $validated['connection_type'] ?? null,
+            'signal_strength' => $validated['signal_strength'] ?? null,
+            'has_internet'    => $validated['has_internet'] ?? null,
+            'tracking_state'  => $validated['tracking_state'] ?? null,
+            'activity_status' => $validated['activity_status'] ?? null,
+            'activity'        => $validated['activity'] ?? null,
+            'movement_type'   => $validated['movement_type'] ?? null,
+            'screen_active'   => $validated['screen_active'] ?? null,
+        ]);
+
+        // ── 5. Actualizar estado del dispositivo ─────────────────────────────
+        $deviceUpdate = [
             'battery_level'   => $validated['battery_level'] ?? $device->battery_level,
             'is_charging'     => $validated['is_charging']   ?? $device->is_charging,
             'connection_type' => $validated['connection_type'] ?? $device->connection_type,
+            // activity = clasificación de movimiento GPS (still/moving), NO activity_status
             'activity'        => $validated['activity']       ?? $device->activity,
             'screen_active'   => $validated['screen_active']  ?? $device->screen_active,
+            'signal_strength' => $validated['signal_strength'] ?? $device->signal_strength,
+            'has_internet'    => $validated['has_internet']   ?? $device->has_internet,
+            'tracking_state'  => $validated['tracking_state'] ?? $device->tracking_state,
+            'activity_status' => $validated['activity_status'] ?? $device->activity_status,
             'last_seen'       => now(),
-        ]);
+            'last_status_at'  => $validated['captured_at']
+                ? \Carbon\Carbon::parse($validated['captured_at'])
+                : now(),
+        ];
 
-        // 2. Crear registro en el historial (para gráficas y rutas del dashboard)
-        LocationHistory::create([
-            'device_id'       => $device->id,
-            'latitude'        => $validated['latitude'],
-            'longitude'       => $validated['longitude'],
-            'battery_level'   => $validated['battery_level']  ?? null,
-            'is_charging'     => $validated['is_charging']    ?? false,
-            'connection_type' => $validated['connection_type'] ?? null,
-            'activity'        => $validated['activity']       ?? 'unknown',
-            'movement_type'   => $validated['movement_type']  ?? 'STATIC',
-            'screen_active'   => $validated['screen_active']  ?? false,
-        ]);
+        // Solo actualizar lat/lng si vienen en el payload
+        if ($hasGps) {
+            $deviceUpdate['latitude']  = $validated['latitude'];
+            $deviceUpdate['longitude'] = $validated['longitude'];
+        }
+
+        $device->update($deviceUpdate);
+
+        // ── 6. Crear LocationHistory SOLO si hay coordenadas GPS ─────────────
+        if ($hasGps) {
+            LocationHistory::create([
+                'device_id'       => $device->id,
+                'latitude'        => $validated['latitude'],
+                'longitude'       => $validated['longitude'],
+                'battery_level'   => $validated['battery_level']  ?? $device->battery_level,
+                'is_charging'     => $validated['is_charging']    ?? $device->is_charging,
+                'connection_type' => $validated['connection_type'] ?? $device->connection_type,
+                // activity en LocationHistory = movimiento GPS (still/moving), NO activity_status
+                'activity'        => $validated['activity']       ?? 'unknown',
+                'movement_type'   => $validated['movement_type']  ?? 'STATIC',
+                'screen_active'   => $validated['screen_active']  ?? $device->screen_active,
+            ]);
+        }
 
         return response()->json([
             'success' => true,

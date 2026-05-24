@@ -55,8 +55,12 @@ Route::prefix('v1')->group(function () {
         });
 
         // Telemetría — envío de datos GPS+sensores e historial
+        // NOTA: Route::post('', ...) SIN trailing slash para que coincida
+        // exactamente con la URL que la app móvil llama ('telemetry').
+        // La app móvil envía tanto frames completos (con lat/lng) como
+        // frames de estado de dispositivo (sin lat/lng) a este endpoint.
         Route::prefix('telemetry')->group(function () {
-            Route::post('/',                             [TelemetryController::class, 'update']);
+            Route::post('',                              [TelemetryController::class, 'update']);
             Route::get('/{identifier}/history',          [TelemetryController::class, 'history']);
         });
 
