@@ -44,13 +44,15 @@ class LocationController extends Controller
     {
         // Normalizar camelCase → snake_case para compatibilidad con la app móvil
         $request->merge([
-            'movement_type'      => $request->input('movementType', $request->input('movement_type')),
-            'smoothed_speed'     => $request->input('smoothedSpeed', $request->input('smoothed_speed')),
-            'captured_at'        => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
-            'speed_kmh'          => $request->input('speedKmh', $request->input('speed_kmh')),
-            'intervalo_aplicado' => $request->input('intervaloAplicado', $request->input('intervalo_aplicado')),
-            'is_safe_zone'       => $request->input('isSafeZone', $request->input('is_safe_zone', $request->input('isSafe', $request->input('is_safe')))),
-            'zone_name'          => $request->input('zoneName', $request->input('zone_name')),
+            'movement_type'      => $request->input('movement_type'),
+            'smoothed_speed'     => $request->input('smoothed_speed'),
+            // captured_at mantiene fallback a created_at por si hay
+            // frames antiguos en la cola offline que usen ese nombre.
+            'captured_at'        => $request->input('captured_at', $request->input('created_at')),
+            'speed_kmh'          => $request->input('speed_kmh'),
+            'intervalo_aplicado' => $request->input('intervalo_aplicado'),
+            'is_safe_zone'       => $request->input('is_safe_zone'),
+            'zone_name'          => $request->input('zone_name'),
         ]);
 
         $validated = $request->validate([

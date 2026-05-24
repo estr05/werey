@@ -55,27 +55,25 @@ class TelemetryController extends Controller
         // Flutter normalmente envía JSON en camelCase (batteryLevel),
         // así que los unimos al formato snake_case que Laravel espera.
         $request->merge([
-            'battery_level'      => $request->input('batteryLevel', $request->input('battery_level')),
-            'is_charging'        => $request->input('isCharging', $request->input('is_charging')),
-            'connection_type'    => $request->input('connectionType', $request->input('connection_type')),
-            'movement_type'      => $request->input('movementType', $request->input('movement_type')),
-            'screen_active'      => $request->input('screenActive', $request->input('screen_active')),
-            'signal_strength'    => $request->input('signalStrength', $request->input('signal_strength')),
-            'has_internet'       => $request->input('hasInternet', $request->input('has_internet')),
-            'tracking_state'     => $request->input('trackingState', $request->input('tracking_state')),
-            'activity_status'    => $request->input('activityStatus', $request->input('activity_status')),
+            'battery_level'      => $request->input('battery_level'),
+            'is_charging'        => $request->input('is_charging'),
+            'connection_type'    => $request->input('connection_type'),
+            'movement_type'      => $request->input('movement_type'),
+            'screen_active'      => $request->input('screen_active'),
+            'signal_strength'    => $request->input('signal_strength'),
+            'has_internet'       => $request->input('has_internet'),
+            'tracking_state'     => $request->input('tracking_state'),
+            'activity_status'    => $request->input('activity_status'),
             // NOTA: activity (still/moving de GPS) NO debe heredar de activity_status
             // (IDLE/CHARGING/WALKING del estado del dispositivo). Son conceptos separados.
             'activity'           => $request->input('activity'),
-            // captured_at admite 3 orígenes:
-            //   1. capturedAt (camelCase de Flutter DeviceStatusFrame)
-            //   2. captured_at (snake_case estándar)
-            //   3. created_at  (enviado por TelemetryEngine → mala nomenclatura en la app)
-            'captured_at'        => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
+            // captured_at mantiene fallback a created_at por si hay
+            // frames antiguos en la cola offline que usen ese nombre.
+            'captured_at'        => $request->input('captured_at', $request->input('created_at')),
             'speed'              => $request->input('speed'),
-            'smoothed_speed'     => $request->input('smoothedSpeed', $request->input('smoothed_speed')),
-            'speed_kmh'          => $request->input('speedKmh', $request->input('speed_kmh')),
-            'intervalo_aplicado' => $request->input('intervaloAplicado', $request->input('intervalo_aplicado')),
+            'smoothed_speed'     => $request->input('smoothed_speed'),
+            'speed_kmh'          => $request->input('speed_kmh'),
+            'intervalo_aplicado' => $request->input('intervalo_aplicado'),
             'motivo'             => $request->input('motivo'),
         ]);
 
