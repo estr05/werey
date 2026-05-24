@@ -67,6 +67,11 @@ class TelemetryController extends Controller
             // NOTA: activity (still/moving de GPS) NO debe heredar de activity_status
             // (IDLE/CHARGING/WALKING del estado del dispositivo). Son conceptos separados.
             'activity'        => $request->input('activity'),
+            // captured_at admite 3 orígenes:
+            //   1. capturedAt (camelCase de Flutter DeviceStatusFrame)
+            //   2. captured_at (snake_case estándar)
+            //   3. created_at  (enviado por TelemetryEngine → mala nomenclatura en la app)
+            'captured_at'     => $request->input('capturedAt', $request->input('captured_at', $request->input('created_at'))),
         ]);
 
         // ── 2. Validación ────────────────────────────────────────────────────

@@ -140,6 +140,48 @@
                                 {{ strtoupper($device->connection_type ?? 'Offline') }}
                             </span>
                         </div>
+
+                        {{-- Señal — mostrar solo si hay datos --}}
+                        @if($device->signal_strength !== null)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Signal</span>
+                            <div class="flex items-end gap-0.5">
+                                @for($i = 0; $i < 4; $i++)
+                                    <span class="w-1.5 rounded-sm {{ $i < $device->signal_strength ? 'bg-[#6CD400]' : 'bg-slate-700' }}" style="height: {{ 8 + $i * 5 }}px"></span>
+                                @endfor
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Internet --}}
+                        @if($device->has_internet !== null)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Internet</span>
+                            <span class="text-[10px] font-mono {{ $device->has_internet ? 'text-emerald-400' : 'text-red-400' }} px-2 py-0.5 rounded {{ $device->has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10' }}">
+                                {{ $device->has_internet ? 'ONLINE' : 'OFFLINE' }}
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Estado de rastreo --}}
+                        @if($device->tracking_state)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Tracking</span>
+                            <span class="text-[9px] font-mono {{ str_contains($device->tracking_state, 'UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10' }} px-2 py-0.5 rounded">
+                                {{ str_replace('_', ' ', $device->tracking_state) }}
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Estado de actividad --}}
+                        @if($device->activity_status)
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Estado</span>
+                            <span class="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                                {{ $device->activity_status }}
+                            </span>
+                        </div>
+                        @endif
                     </div>
                 @endif
                 
@@ -421,6 +463,38 @@
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Network</span>
                             <span class="text-[10px] font-mono text-[#005d70] bg-[#005d70]/10 px-2 py-0.5 rounded">${connectionType.toUpperCase()}</span>
                         </div>
+
+                        ${device.signal_strength !== null && device.signal_strength !== undefined ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Signal</span>
+                            <div class="flex items-end gap-0.5">
+                                ${Array.from({length: 4}, (_, i) => `<span class="w-1.5 rounded-sm ${i < device.signal_strength ? 'bg-[#6CD400]' : 'bg-slate-700'}" style="height: ${8 + i * 5}px"></span>`).join('')}
+                            </div>
+                        </div>` : ''}
+
+                        ${device.has_internet !== null && device.has_internet !== undefined ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Internet</span>
+                            <span class="text-[10px] font-mono ${device.has_internet ? 'text-emerald-400' : 'text-red-400'} px-2 py-0.5 rounded ${device.has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10'}">
+                                ${device.has_internet ? 'ONLINE' : 'OFFLINE'}
+                            </span>
+                        </div>` : ''}
+
+                        ${device.tracking_state ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Tracking</span>
+                            <span class="text-[9px] font-mono ${device.tracking_state.includes('UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'} px-2 py-0.5 rounded">
+                                ${device.tracking_state.replace(/_/g, ' ')}
+                            </span>
+                        </div>` : ''}
+
+                        ${device.activity_status ? `
+                        <div class="flex items-center justify-between pt-1">
+                            <span class="text-[10px] font-bold text-slate-500 uppercase">Estado</span>
+                            <span class="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                                ${device.activity_status}
+                            </span>
+                        </div>` : ''}
                     </div>
                 `}
 

@@ -81,13 +81,59 @@
                     </div>
 
                     <div class="bg-slate-800/50 p-4 rounded-xl border border-white/5 mb-4">
-                        <div class="flex justify-between items-start mb-2">
+                        <div class="flex justify-between items-start mb-3">
                             <span class="text-[10px] text-slate-400 uppercase">Tipo de Conexión</span>
                             <span class="bg-blue-500/20 text-blue-400 text-[9px] px-1.5 py-0.5 rounded font-bold">{{ strtoupper($device->connection_type ?? 'N/A') }}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-blue-500">signal_cellular_alt</span>
-                            <span class="text-white font-mono text-xs">Pantalla: {{ $device->screen_active ? 'Activa' : 'Inactiva' }}</span>
+
+                        {{-- Señal --}}
+                        @if($device->signal_strength !== null)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Señal</span>
+                            <div class="flex items-end gap-0.5">
+                                @for($i = 0; $i < 4; $i++)
+                                    <span class="w-1.5 rounded-sm {{ $i < $device->signal_strength ? 'bg-[#6CD400]' : 'bg-slate-700' }}" style="height: {{ 8 + $i * 5 }}px"></span>
+                                @endfor
+                            </div>
+                        </div>
+                        @endif
+
+                        {{-- Internet --}}
+                        @if($device->has_internet !== null)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Internet</span>
+                            <span class="text-[10px] font-mono {{ $device->has_internet ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10' }} px-2 py-0.5 rounded">
+                                {{ $device->has_internet ? 'ONLINE' : 'OFFLINE' }}
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Tracking state --}}
+                        @if($device->tracking_state)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Rastreo</span>
+                            <span class="text-[9px] font-mono {{ str_contains($device->tracking_state, 'UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10' }} px-2 py-0.5 rounded">
+                                {{ str_replace('_', ' ', $device->tracking_state) }}
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Activity status --}}
+                        @if($device->activity_status)
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Estado</span>
+                            <span class="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                                {{ $device->activity_status }}
+                            </span>
+                        </div>
+                        @endif
+
+                        {{-- Pantalla --}}
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-[10px] text-slate-500 uppercase">Pantalla</span>
+                            <span class="text-[9px] font-mono {{ $device->screen_active ? 'text-white' : 'text-slate-500' }}">
+                                {{ $device->screen_active ? 'Activa' : 'Inactiva' }}
+                            </span>
                         </div>
                     </div>
 

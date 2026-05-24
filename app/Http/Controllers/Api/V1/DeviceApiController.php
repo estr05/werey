@@ -22,6 +22,7 @@ class DeviceApiController extends Controller
                 'id', 'alias', 'identifier', 'latitude', 'longitude',
                 'battery_level', 'is_charging', 'connection_type',
                 'activity', 'screen_active', 'last_seen',
+                'signal_strength', 'has_internet', 'tracking_state', 'activity_status',
             ])
             ->orderByDesc('last_seen')
             ->get();
