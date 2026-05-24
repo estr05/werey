@@ -83,11 +83,10 @@ class DashboardController extends Controller
         $defaultDate = $lastPoint ? $lastPoint->created_at->toDateString() : now()->toDateString();
         $selectedDate = $request->query('date', $defaultDate);
 
-        // Cargamos el historial de ubicaciones para esa fecha y los lugares seguros
-        $locationHistories = $device->locationHistories()
-            ->whereDate('created_at', $selectedDate)
-            ->orderBy('created_at', 'asc')
-            ->get();
+        // El historial se carga por API JSON en T5 para el mapa,
+        // pero la vista Blade todavía usa $locationHistories para mostrar la lista de 'Movimientos de Hoy'
+        $locationHistories = $device->locationHistories()->whereDate('created_at', $selectedDate)->get();
+
 
         $safePlaces = $device->safePlaces;
 
@@ -118,11 +117,18 @@ class DashboardController extends Controller
             }
         }
 
+        $availableDates = $device->locationHistories()
+            ->selectRaw('DATE(created_at) as date')
+            ->groupBy('date')
+            ->orderBy('date', 'desc')
+            ->pluck('date');
+
         return view('device-detail', compact(
             'device', 
-            'locationHistories', 
+            'locationHistories',
             'safePlaces', 
-            'selectedDate', 
+            'selectedDate',
+            'availableDates',
             'isInsideSafeZone', 
             'activeSafeZoneName'
         ));
@@ -169,6 +175,54 @@ class DashboardController extends Controller
         $safePlace->delete();
 
         return redirect()->route('device.show', $device->id)->with('success', 'Punto seguro eliminado.');
+    }
+
+    /**
+     * T4 — Historial GPS paginado por fecha.
+     * Devuelve los puntos de ubicación de un dispositivo para una fecha dada.
+     * Protegido por sesión web (guard 'auth') — el browser envía la cookie automáticamente.
+     * GET /device/{id}/history?date=YYYY-MM-DD
+     */
+    public function historyJson(Request $request, $id): JsonResponse
+    {
+        $device = Auth::user()->devices()->findOrFail($id);
+
+        $date  = $request->query('date', now()->toDateString());
+        $limit = min((int) $request->query('limit', 500), 1000);
+
+        $points = $device->locationHistories()
+            ->whereDate('created_at', $date)
+            ->orderBy('created_at', 'asc')
+            ->limit($limit)
+            ->get([
+                'latitude', 'longitude', 'activity', 'movement_type',
+                'speed_kmh', 'battery_level', 'is_charging', 'screen_active',
+                'intervalo_aplicado', 'motivo', 'created_at', 'captured_at', 'bearing', 'accuracy'
+            ])
+            ->map(fn ($p) => [
+                'lat'            => (float) $p->latitude,
+                'lng'            => (float) $p->longitude,
+                'activity'       => $p->activity ?? 'still',
+                'movement_type'  => $p->movement_type ?? 'STATIC',
+                'speed_kmh'      => $p->speed_kmh ? (float) $p->speed_kmh : null,
+                'battery'        => $p->battery_level,
+                'is_charging'    => (bool) $p->is_charging,
+                'screen_active'  => (bool) $p->screen_active,
+                'intervalo'      => $p->intervalo_aplicado,
+                'motivo'         => $p->motivo,
+                'bearing'        => $p->bearing,
+                'cardinal'       => $p->cardinal_direction,
+                'accuracy'       => $p->accuracy,
+                'time'           => ($p->captured_at ?? $p->created_at)->toIso8601String(),
+                'label_time'     => ($p->captured_at ?? $p->created_at)->format('H:i:s'),
+            ]);
+
+        return response()->json([
+            'success' => true,
+            'date'    => $date,
+            'total'   => $points->count(),
+            'points'  => $points,
+        ]);
     }
 
     /**
@@ -317,6 +371,73 @@ class DashboardController extends Controller
         $response->headers->set('Content-Type', 'text/event-stream');
         $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
         $response->headers->set('X-Accel-Buffering', 'no'); // Deshabilitar buffering de nginx
+
+        return $response;
+    }
+
+    /**
+     * T7-backend — SSE de posición en tiempo real para la vista del dispositivo.
+     * Emite evento 'position' cuando lat/lng cambia, 'heartbeat' cuando no hay cambios.
+     * GET /device/{id}/sse
+     */
+    public function deviceSseStream(Request $request, $id): Response
+    {
+        $device = Auth::user()->devices()->findOrFail($id);
+        session_write_close();
+
+        $response = new StreamedResponse(function () use ($device) {
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            $lastLat     = null;
+            $lastLng     = null;
+            $lastSeenRaw = null;
+
+            while (!connection_aborted()) {
+                $device->refresh();
+
+                $changed = ($device->latitude  !== $lastLat)
+                        || ($device->longitude !== $lastLng)
+                        || ($device->last_seen?->toIso8601String() !== $lastSeenRaw);
+
+                if ($changed) {
+                    $payload = json_encode([
+                        'latitude'    => $device->latitude ? (float) $device->latitude : null,
+                        'longitude'   => $device->longitude ? (float) $device->longitude : null,
+                        'bearing'     => $device->bearing ? (float) $device->bearing : null,
+                        'speed_kmh'   => $device->speed_kmh ? (float) $device->speed_kmh : null,
+                        'activity'    => $device->activity ?? 'still',
+                        'movement_type' => $device->motivo ?? null,
+                        'battery'     => $device->battery_level,
+                        'is_charging' => (bool) $device->is_charging,
+                        'last_seen'   => $device->last_seen?->diffForHumans(),
+                        'server_time' => now()->toIso8601String(),
+                    ]);
+
+                    echo "event: position\n";
+                    echo "data: {$payload}\n\n";
+
+                    $lastLat     = $device->latitude;
+                    $lastLng     = $device->longitude;
+                    $lastSeenRaw = $device->last_seen?->toIso8601String();
+                } else {
+                    echo "event: heartbeat\n";
+                    echo 'data: {"time":"' . now()->toIso8601String() . '"}' . "\n\n";
+                }
+
+                if (ob_get_level()) {
+                    ob_flush();
+                }
+                flush();
+
+                sleep(3);
+            }
+        });
+
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache, no-store, must-revalidate');
+        $response->headers->set('X-Accel-Buffering', 'no');
 
         return $response;
     }

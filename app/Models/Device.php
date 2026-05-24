@@ -17,6 +17,10 @@ class Device extends Model
         'identifier',
         'latitude',
         'longitude',
+        'location',          // PostGIS Geography
+        'last_accuracy',     // PostGIS Accuracy
+        'last_location_at',  // PostGIS Timestamp
+        'bearing',           // Hardware Bearing (0-359.99)
         'battery_level',
         'is_charging',
         'connection_type',
@@ -43,10 +47,13 @@ class Device extends Model
         'has_internet'  => 'boolean',
         'latitude'      => 'double',
         'longitude'     => 'double',
+        'last_accuracy' => 'double',
+        'bearing'       => 'double',
         'speed_kmh'     => 'double',
         'intervalo_aplicado' => 'integer',
         'last_seen'      => 'datetime', // Permite usar funciones de fecha como diffForHumans()
         'last_status_at' => 'datetime',
+        'last_location_at' => 'datetime',
     ];
 
     /**
@@ -72,5 +79,29 @@ class Device extends Model
     public function locationHistories(): HasMany
     {
         return $this->hasMany(LocationHistory::class);
+    }
+
+    /**
+     * T8 - Máquina de Estados de Conexión.
+     * Calcula dinámicamente si el dispositivo está vivo, en espera, con pérdida de señal o apagado,
+     * basándose exclusivamente en el tiempo del último heartbeat (last_seen), NO en banderas booleanas estáticas.
+     */
+    public function getConnectionStatusAttribute(): string
+    {
+        if (!$this->last_seen) {
+            return 'offline'; // Nunca se ha conectado
+        }
+
+        $secondsSinceLastSeen = $this->last_seen->diffInSeconds(now());
+
+        if ($secondsSinceLastSeen < 30) {
+            return 'online'; // Transmitiendo activamente
+        } elseif ($secondsSinceLastSeen < 180) { // 3 minutos
+            return 'idle'; // Conectado, pero inactivo o ahorrando batería
+        } elseif ($secondsSinceLastSeen < 900) { // 15 minutos
+            return 'signal_lost'; // Posible entrada a túnel o pérdida de cobertura temporal
+        } else {
+            return 'offline'; // Dispositivo apagado o desconectado a largo plazo
+        }
     }
 }

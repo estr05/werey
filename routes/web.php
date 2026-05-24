@@ -34,4 +34,10 @@ Route::middleware('auth')->group(function () {
     // Rutas para Puntos/Zonas Seguras
     Route::post('/device/{id}/safe-place', [DashboardController::class, 'storeSafePlace'])->name('safe-place.store');
     Route::delete('/safe-place/{id}', [DashboardController::class, 'destroySafePlace'])->name('safe-place.destroy');
+
+    // T4 — Historial GPS paginado por fecha (JSON, autenticado via sesión web)
+    Route::get('/device/{id}/history', [DashboardController::class, 'historyJson'])->name('device.history');
+
+    // T7-backend — SSE de posición en tiempo real para la vista del dispositivo
+    Route::get('/device/{id}/sse', [DashboardController::class, 'deviceSseStream'])->name('device.sse');
 });

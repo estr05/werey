@@ -75,6 +75,10 @@ class TelemetryController extends Controller
             'speed_kmh'          => $request->input('speed_kmh'),
             'intervalo_aplicado' => $request->input('intervalo_aplicado'),
             'motivo'             => $request->input('motivo'),
+            // Nuevos campos para PostGIS, Heartbeat y Orientación
+            'accuracy'           => $request->input('accuracy'),
+            'bearing'            => $request->input('bearing'),
+            'type'               => $request->input('type'),
         ]);
 
         // ── 2. Validación ────────────────────────────────────────────────────
@@ -101,6 +105,9 @@ class TelemetryController extends Controller
             'speed_kmh'          => ['nullable', 'numeric'],
             'intervalo_aplicado' => ['nullable', 'integer'],
             'motivo'             => ['nullable', 'string'],
+            'accuracy'           => ['nullable', 'numeric'],
+            'bearing'            => ['nullable', 'numeric'],
+            'type'               => ['nullable', 'string'],
         ]);
 
         // ── 3. Autenticación del dispositivo ─────────────────────────────────
@@ -125,33 +132,67 @@ class TelemetryController extends Controller
 
         // ── 4. Log del payload recibido ──────────────────────────────────────
         $hasGps = $validated['latitude'] !== null && $validated['longitude'] !== null;
+        
+        // ── LÓGICA DE HEARTBEAT Y FILTROS GPS ────────────────────────────────
+        $isHeartbeat = false;
+        $accuracy = $validated['accuracy'] ?? null;
+
+        // 1. Heartbeat explícito enviado por la app
+        if (($validated['type'] ?? '') === 'heartbeat') {
+            $isHeartbeat = true;
+        }
+
+        // 2. Filtro de Precisión (Anti-Basura)
+        if ($hasGps && $accuracy !== null && $accuracy > 50.0) {
+            $isHeartbeat = true; // Precisión muy mala. Se degrada a heartbeat para no arruinar el mapa.
+        }
+
+        // 3. Filtro Anti-Drift (Si está quieto y la posición casi no cambió, es heartbeat)
+        if ($hasGps && !$isHeartbeat && ($validated['activity'] ?? 'still') === 'still') {
+            if ($device->latitude == $validated['latitude'] && $device->longitude == $validated['longitude']) {
+                $isHeartbeat = true;
+            }
+        }
+
         Log::info('[Telemetry] Paquete recibido', [
             'device_id'       => $device->id,
+            'is_heartbeat'    => $isHeartbeat,
             'has_gps'         => $hasGps,
+            'accuracy'        => $accuracy,
             'latitude'        => $validated['latitude'],
             'longitude'       => $validated['longitude'],
             'battery_level'   => $validated['battery_level'] ?? null,
-            'is_charging'     => $validated['is_charging'] ?? null,
             'connection_type' => $validated['connection_type'] ?? null,
-            'signal_strength' => $validated['signal_strength'] ?? null,
-            'has_internet'    => $validated['has_internet'] ?? null,
-            'tracking_state'  => $validated['tracking_state'] ?? null,
-            'activity_status' => $validated['activity_status'] ?? null,
-            'activity'        => $validated['activity'] ?? null,
-            'movement_type'   => $validated['movement_type'] ?? null,
-            'screen_active'   => $validated['screen_active'] ?? null,
         ]);
 
-        // ── 5. Actualizar estado del dispositivo ─────────────────────────────
+        // ── 5. Actualizar estado del dispositivo y cálculos secundarios ───────
         $speedKmh = $validated['speed_kmh'] ?? null;
         $intervalo = $validated['intervalo_aplicado'] ?? null;
         $motivo = $validated['motivo'] ?? null;
+        
+        // Calcular speed_kmh real si no viene
+        if ($hasGps && $speedKmh === null) {
+            $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
+            $speedKmh = $speedMs * 3.6;
+        }
+
+        // LÓGICA DE BEARING (Orientación) Y FILTRO ANTI-JITTER
+        $bearing = $validated['bearing'] ?? null;
+        if ($bearing !== null) {
+            // Normalización angular de seguridad (Wrap-around 0-359.99)
+            $bearing = fmod((float)$bearing, 360.0);
+            if ($bearing < 0) $bearing += 360.0;
+            
+            // Deadband Filter: Si la velocidad es < 2km/h, el GPS no sabe a donde apunta.
+            // Ignoramos la rotación loca y congelamos la última dirección conocida.
+            if (($speedKmh ?? 0) < 2.0) {
+                $bearing = clone $device->bearing; // Ignoramos el nuevo, retenemos el actual
+            }
+        } else {
+            $bearing = $device->bearing; // Si la app no manda bearing, mantenemos el anterior
+        }
 
         if ($hasGps) {
-            if ($speedKmh === null) {
-                $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
-                $speedKmh = $speedMs * 3.6;
-            }
 
             if ($intervalo === null) {
                 $isSafe = str_contains($validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE', 'SAFE');
@@ -215,10 +256,19 @@ class TelemetryController extends Controller
                 : now(),
         ];
 
-        // Solo actualizar lat/lng si vienen en el payload
-        if ($hasGps) {
+        // Solo actualizar lat/lng de verdad si NO es heartbeat y trae GPS válido
+        if ($hasGps && !$isHeartbeat) {
             $deviceUpdate['latitude']  = $validated['latitude'];
             $deviceUpdate['longitude'] = $validated['longitude'];
+            $deviceUpdate['last_accuracy'] = $accuracy;
+            $deviceUpdate['last_location_at'] = now();
+            
+            // PostGIS GEOGRAPHY(Point) update
+            $lon = (float) $validated['longitude'];
+            $lat = (float) $validated['latitude'];
+            $deviceUpdate['location'] = \Illuminate\Support\Facades\DB::raw("ST_SetSRID(ST_MakePoint({$lon}, {$lat}), 4326)");
+            
+            $deviceUpdate['bearing']   = $bearing;
             $deviceUpdate['speed_kmh'] = $speedKmh;
             $deviceUpdate['intervalo_aplicado'] = $intervalo;
             $deviceUpdate['motivo'] = $motivo;
@@ -226,23 +276,40 @@ class TelemetryController extends Controller
 
         $device->update($deviceUpdate);
 
-        // ── 6. Crear LocationHistory SOLO si hay coordenadas GPS ─────────────
-        if ($hasGps) {
-            LocationHistory::create([
-                'device_id'          => $device->id,
-                'latitude'           => $validated['latitude'],
-                'longitude'          => $validated['longitude'],
-                'battery_level'      => $validated['battery_level']  ?? $device->battery_level,
-                'is_charging'        => $validated['is_charging']    ?? $device->is_charging,
-                'connection_type'    => $validated['connection_type'] ?? $device->connection_type,
-                // activity en LocationHistory = movimiento GPS (still/moving), NO activity_status
-                'activity'           => $validated['activity']       ?? 'unknown',
-                'movement_type'      => $validated['movement_type']  ?? 'STATIC',
-                'screen_active'      => $validated['screen_active']  ?? $device->screen_active,
-                'speed_kmh'          => $speedKmh,
-                'intervalo_aplicado' => $intervalo,
-                'motivo'             => $motivo,
-            ]);
+        // ── 6. Crear LocationHistory SOLO si es GPS válido ─────────────
+        if ($hasGps && !$isHeartbeat) {
+            // Protección Anti-Duplicados (Offline sync de Flutter puede reintentar envíos)
+            $capturedAtStr = $validated['captured_at'] ?? now()->toIso8601String();
+            $capturedAt = \Carbon\Carbon::parse($capturedAtStr);
+            
+            $exists = LocationHistory::where('device_id', $device->id)
+                ->where('captured_at', $capturedAt)
+                ->exists();
+
+            if (!$exists) {
+                $lon = (float) $validated['longitude'];
+                $lat = (float) $validated['latitude'];
+
+                LocationHistory::create([
+                    'device_id'          => $device->id,
+                    'latitude'           => $validated['latitude'],
+                    'longitude'          => $validated['longitude'],
+                    'location'           => \Illuminate\Support\Facades\DB::raw("ST_SetSRID(ST_MakePoint({$lon}, {$lat}), 4326)"),
+                    'accuracy'           => $accuracy,
+                    'bearing'            => $bearing,
+                    'captured_at'        => $capturedAt,
+                    'battery_level'      => $validated['battery_level']  ?? $device->battery_level,
+                    'is_charging'        => $validated['is_charging']    ?? $device->is_charging,
+                    'connection_type'    => $validated['connection_type'] ?? $device->connection_type,
+                    // activity en LocationHistory = movimiento GPS (still/moving), NO activity_status
+                    'activity'           => $validated['activity']       ?? 'unknown',
+                    'movement_type'      => $validated['movement_type']  ?? 'STATIC',
+                    'screen_active'      => $validated['screen_active']  ?? $device->screen_active,
+                    'speed_kmh'          => $speedKmh,
+                    'intervalo_aplicado' => $intervalo,
+                    'motivo'             => $motivo,
+                ]);
+            }
         }
 
         return response()->json([

@@ -136,15 +136,13 @@
                             </span>
                         </div>
 
-                        {{-- Velocidad --}}
-                        @if($device->speed_kmh !== null)
+                        {{-- Velocidad (id para actualización SSE) --}}
                         <div class="flex items-center justify-between mb-2">
                             <span class="text-[10px] text-slate-500 uppercase">Velocidad</span>
-                            <span class="text-[9px] font-mono text-emerald-400">
-                                {{ number_format($device->speed_kmh, 1) }} km/h
+                            <span id="live-speed" class="text-[9px] font-mono text-emerald-400">
+                                {{ $device->speed_kmh !== null ? number_format($device->speed_kmh, 1).' km/h' : '—' }}
                             </span>
                         </div>
-                        @endif
 
                         {{-- Frecuencia de Envío --}}
                         @if($device->intervalo_aplicado)
@@ -187,16 +185,7 @@
                     </div>
                 </div>
 
-                <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800">
-                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Historial Diario</h4>
-                    <form method="GET" action="{{ route('device.show', $device->id) }}">
-                        <div class="flex gap-2">
-                            <input type="date" name="date" value="{{ $selectedDate }}" onchange="this.form.submit()"
-                                   class="bg-slate-900 border border-slate-800 rounded-xl py-3.5 px-4 text-xs text-white outline-none focus:border-[#00e5ff] w-full transition-all cursor-pointer font-bold">
-                        </div>
-                    </form>
-                    <p class="text-[9px] text-slate-500 mt-2 font-mono">Mostrando registros para: {{ \Carbon\Carbon::parse($selectedDate)->format('d M, Y') }}</p>
-                </div>
+                <!-- Eliminado el Datepicker lateral redundante, ahora vive en el overlay del mapa -->
 
                 <button class="mt-auto bg-red-500/10 border border-red-500/50 text-red-500 w-full py-4 rounded-xl font-bold text-xs uppercase hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2 shrink-0">
                     <span class="material-symbols-outlined text-sm">lock</span> Bloqueo de Emergencia
@@ -207,11 +196,33 @@
             <div class="lg:col-span-6 h-full relative">
                 <div class="absolute inset-0 bg-black rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
                     
+                    <!-- Overlay de Carga (T5) -->
+                    <div id="map-loader" class="absolute inset-0 bg-[#1c1e21]/80 backdrop-blur-sm z-[500] hidden flex flex-col items-center justify-center">
+                        <div class="size-10 border-4 border-[#00e5ff]/20 border-t-[#00e5ff] rounded-full animate-spin mb-4"></div>
+                        <span class="text-xs font-mono font-bold text-[#00e5ff] tracking-widest animate-pulse">CARGANDO HISTORIAL...</span>
+                    </div>
+                    
                     <!-- Overlay de Fecha del Historial en el Mapa -->
-                    <div class="absolute top-4 left-4 z-[400]">
-                        <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-4 py-2 text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg">
+                    <div class="absolute top-4 left-4 z-[400] flex flex-col gap-2">
+                        <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg focus-within:border-[#00e5ff] transition-colors hover:bg-slate-800">
                             <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
-                            Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
+                            <span class="text-slate-400">Historial:</span>
+                            <select onchange="window.location.href = '?date=' + this.value;" class="bg-transparent border-none outline-none text-white cursor-pointer font-mono font-bold appearance-none pr-4">
+                                @if(!in_array($selectedDate, $availableDates->toArray()))
+                                    <option value="{{ $selectedDate }}" class="bg-slate-900 text-slate-500" selected>{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }} (Sin datos)</option>
+                                @endif
+                                @foreach($availableDates as $date)
+                                    <option value="{{ $date }}" class="bg-slate-900 text-white" {{ $date == $selectedDate ? 'selected' : '' }}>
+                                        {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <span class="material-symbols-outlined text-slate-500 text-sm -ml-4 pointer-events-none">expand_more</span>
+                        </div>
+                        {{-- Indicador LIVE SSE --}}
+                        <div id="live-indicator" class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 rounded-xl px-3 py-1.5 flex items-center gap-2 shadow-lg self-start">
+                            <span id="live-dot" class="size-2 rounded-full bg-slate-600"></span>
+                            <span id="live-text" class="text-[10px] font-mono text-slate-500">Conectando...</span>
                         </div>
                     </div>
 
@@ -289,7 +300,7 @@
                         </div>
                         <div class="mt-3 flex items-center justify-between border-t border-white/5 pt-2">
                             <span class="text-[10px] text-slate-500">Última Señal</span>
-                            <span class="text-[9px] text-[#00e5ff] font-bold flex items-center gap-1">
+                            <span id="live-last-seen" class="text-[9px] text-[#00e5ff] font-bold flex items-center gap-1">
                                 <span class="size-1.5 bg-[#00e5ff] rounded-full animate-ping"></span>
                                 {{ $device->last_seen ? $device->last_seen->diffForHumans() : 'SIN DATOS' }}
                             </span>
@@ -327,36 +338,13 @@
                 </div>
 
                 <!-- Historial de Pings del Día -->
-                <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800 flex-1 min-h-[200px]">
-                    <div class="flex justify-between items-center mb-4">
+                <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800 flex-1 min-h-[200px] flex flex-col overflow-hidden">
+                    <div class="flex justify-between items-center mb-4 shrink-0">
                         <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Movimientos de Hoy</h4>
                         <span class="text-[9px] text-[#00e5ff] font-bold">HISTORIAL</span>
                     </div>
-                    <div class="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                        @forelse($locationHistories->sortByDesc('created_at')->take(10) as $history)
-                        <div class="p-3 rounded-xl border border-white/5 bg-transparent opacity-80 hover:opacity-100 transition-opacity">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="text-white font-bold text-[11px]">{{ $history->created_at->format('H:i') }} ({{ $history->created_at->diffForHumans(null, true, true) }} ago)</span>
-                                <span class="text-[10px] font-bold font-mono {{ ($history->activity == 'moving' || in_array($history->movement_type, ['WALKING', 'RUNNING', 'VEHICLE'])) ? 'text-[#6CD400]' : 'text-slate-500' }}">
-                                    {{ strtoupper($history->movement_type ?? $history->activity) }}
-                                </span>
-                            </div>
-                            <p class="text-[9px] text-slate-400 font-mono">
-                                Batería: {{ $history->battery_level }}% • Red: {{ strtoupper($history->connection_type ?? 'N/A') }}
-                            </p>
-                            @if($history->speed_kmh !== null || $history->intervalo_aplicado)
-                            <p class="text-[9px] text-slate-500 font-mono mt-0.5">
-                                @if($history->speed_kmh !== null) Velocidad: <span class="text-emerald-400">{{ number_format($history->speed_kmh, 1) }} km/h</span> @endif
-                                @if($history->intervalo_aplicado) • Frecuencia: <span class="text-cyan-400">{{ $history->intervalo_aplicado }}s</span> @endif
-                                @if($history->motivo) • Motivo: <span class="text-purple-400">{{ strtoupper(str_replace('_', ' ', $history->motivo)) }}</span> @endif
-                            </p>
-                            @endif
-                        </div>
-                        @empty
-                        <div class="text-center py-8 text-slate-600 text-xs italic">
-                            Sin transmisiones reportadas para este día.
-                        </div>
-                        @endforelse
+                    <div id="history-container" class="space-y-3 flex-1 overflow-y-auto pr-1 relative">
+                        <!-- El contenido se inyecta dinámicamente vía JS -->
                     </div>
                 </div>
 
@@ -387,194 +375,294 @@
             attributionControl: false
         }).setView([lat, lng], 15);
 
-        // 3. Capa de Mapa (Midnight Blue)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 16
+        // 3. Capas de Mapa: Dark base + labels separados (CartoDB, gratuito, sin API key)
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         }).addTo(map);
 
-        // 4. Cargar Historial Telemetría Completa desde Laravel
-        var telemetryHistory = [
-            @foreach ($locationHistories as $point)
-            {
-                lat: {{ $point->latitude }},
-                lng: {{ $point->longitude }},
-                battery: {{ $point->battery_level ?? 100 }},
-                is_charging: {{ $point->is_charging ? 'true' : 'false' }},
-                activity: "{{ $point->activity ?? 'still' }}",
-                movement_type: "{{ $point->movement_type ?? 'STATIC' }}",
-                screen_active: {{ $point->screen_active ? 'true' : 'false' }},
-                time: "{{ $point->created_at->toIso8601String() }}",
-                label_time: "{{ $point->created_at->format('H:i:s') }}"
-            },
-            @endforeach
-        ];
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
+            maxZoom: 19,
+            opacity: 0.85,
+            pane: 'shadowPane' // Renderizar labels encima de polylines
+        }).addTo(map);
 
-        // 5. Preparar arquitectura de Estilos Dinámicos
+        // T2: Control personalizado — Botón "Centrar en Dispositivo"
+        var CenterControl = L.Control.extend({
+            options: { position: 'bottomright' },
+            onAdd: function () {
+                var container = L.DomUtil.create('div', 'leaflet-bar');
+                var btn = L.DomUtil.create('button', '', container);
+                btn.title = 'Centrar en dispositivo';
+                btn.setAttribute('id', 'btn-center-device');
+                btn.innerHTML = '<span class="material-symbols-outlined" style="font-size:20px;line-height:1;">my_location</span>';
+                btn.style.cssText = [
+                    'width:36px', 'height:36px', 'display:flex', 'align-items:center',
+                    'justify-content:center', 'background:#1c1e21', 'border:none',
+                    'color:#00e5ff', 'cursor:pointer', 'border-radius:8px',
+                    'transition:background 0.2s'
+                ].join(';');
+                btn.onmouseenter = function () { btn.style.background = '#005d70'; };
+                btn.onmouseleave = function () { btn.style.background = '#1c1e21'; };
+                L.DomEvent.on(btn, 'click', function (e) {
+                    L.DomEvent.stopPropagation(e);
+                    if (lat && lng) {
+                        map.flyTo([lat, lng], 17, { animate: true, duration: 0.7 });
+                    }
+                });
+                return container;
+            }
+        });
+        map.addControl(new CenterControl());
+
+        // ─────────────────────────────────────────────────────────
+        // T5+T6: Estilos, funciones de renderizado y carga via fetch
+        // ─────────────────────────────────────────────────────────
+
+        // Estilos de ruta por tipo de movimiento
         var routeStyles = {
             'WALKING': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' },
-            'RUNNING': { color: '#ff0055', weight: 6, opacity: 0.9, dashArray: '4, 8', dashOffset: '0', lineJoin: 'round' },
-            'VEHICLE': { color: '#6CD400', weight: 6, opacity: 0.9, dashArray: null, smoothFactor: 2.0, lineJoin: 'round' },
+            'RUNNING': { color: '#ff0055', weight: 6, opacity: 0.9, dashArray: '4, 8', dashOffset: '0',  lineJoin: 'round' },
+            'VEHICLE': { color: '#6CD400', weight: 6, opacity: 0.9, dashArray: null,   smoothFactor: 2.0, lineJoin: 'round' },
             'STATIC':  { color: '#888888', weight: 4, opacity: 0.5, dashArray: '2, 4', lineJoin: 'round' },
-            'DEFAULT': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' } // fallback
+            'DEFAULT': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' },
         };
 
-        // 6. Filtrado y Suavizado de Trayectorias
-        var sortedTelemetry = [...telemetryHistory].sort(function(a, b) {
-            return new Date(a.time) - new Date(b.time);
-        });
+        // Capas activas en el mapa (para limpiar antes de re-renderizar)
+        var activeRouteLayers = [];
+        var activeStopCluster = null;
 
-        // Función para detectar saltos rectos exagerados (filtro de anomalías GPS / altas velocidades imposibles)
+        // ── Limpia el mapa antes de cargar un nuevo historial ──
+        function clearMapHistory() {
+            activeRouteLayers.forEach(function (l) { map.removeLayer(l); });
+            activeRouteLayers = [];
+            if (activeStopCluster) {
+                map.removeLayer(activeStopCluster);
+                activeStopCluster = null;
+            }
+        }
+
+        // ── Filtro de saltos GPS imposibles (>200 km/h) ──
         function isAnomalousJump(p1, p2) {
-            var tDiff = (new Date(p2.time) - new Date(p1.time)) / 3600000; // horas
+            var tDiff = (new Date(p2.time) - new Date(p1.time)) / 3600000;
             if (tDiff <= 0) return false;
-            
-            var R = 6371; // km
+            var R = 6371;
             var dLat = (p2.lat - p1.lat) * Math.PI / 180;
             var dLon = (p2.lng - p1.lng) * Math.PI / 180;
-            var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-                    Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180) *
-                    Math.sin(dLon/2) * Math.sin(dLon/2);
-            var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            var dist = R * c;
-            
-            var speed = dist / tDiff; // km/h
-            return speed > 200; // Más de 200 km/h se considera anómalo para estos sensores
+            var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+                    Math.cos(p1.lat*Math.PI/180)*Math.cos(p2.lat*Math.PI/180)*
+                    Math.sin(dLon/2)*Math.sin(dLon/2);
+            return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) / tDiff > 200;
         }
 
-        var cleanTelemetry = [];
-        for (var i = 0; i < sortedTelemetry.length; i++) {
-            if (i > 0 && isAnomalousJump(cleanTelemetry[cleanTelemetry.length - 1], sortedTelemetry[i])) {
-                continue; // Omitir salto
-            }
-            cleanTelemetry.push(sortedTelemetry[i]);
-        }
-
-        // Dividir la ruta en segmentos según el tipo de movimiento
-        var segments = [];
-        var currentSegment = [];
-        var currentType = null;
-
-        cleanTelemetry.forEach(function(point) {
-            var type = point.movement_type || 'DEFAULT';
-            
-            if (currentType !== type) {
-                if (currentSegment.length > 0) {
-                    segments.push({ type: currentType, points: currentSegment });
-                }
-                // Conectar segmentos visualmente repitiendo el último punto
-                currentSegment = currentSegment.length > 0 ? [currentSegment[currentSegment.length - 1], point] : [point];
-                currentType = type;
-            } else {
-                currentSegment.push(point);
-            }
-        });
-        if (currentSegment.length > 0) {
-            segments.push({ type: currentType, points: currentSegment });
-        }
-
-        // Renderizado de las rutas diferenciando los trayectos
-        var polylineBounds = L.latLngBounds();
-        segments.forEach(function(segment) {
-            var style = routeStyles[segment.type] || routeStyles['DEFAULT'];
-            var rawPoints = segment.points.map(function(p) { return [p.lat, p.lng]; });
-            var smoothedPoints = rawPoints;
-            
-            // Suavizado de coordenadas (interpolación visual) para vehículos
-            if (segment.type === 'VEHICLE' && rawPoints.length >= 3) {
-                smoothedPoints = [rawPoints[0]];
-                for (var i = 1; i < rawPoints.length - 1; i++) {
-                    var prev = rawPoints[i-1];
-                    var curr = rawPoints[i];
-                    var next = rawPoints[i+1];
-                    // Reducción de líneas agresivas: promedio móvil
-                    var lat = (prev[0] + curr[0]*2 + next[0]) / 4;
-                    var lng = (prev[1] + curr[1]*2 + next[1]) / 4;
-                    smoothedPoints.push([lat, lng]);
-                }
-                smoothedPoints.push(rawPoints[rawPoints.length - 1]);
-            }
-            
-            if (smoothedPoints.length > 1) {
-                var pl = L.polyline(smoothedPoints, style).addTo(map);
-                polylineBounds.extend(pl.getBounds());
-            } else if (smoothedPoints.length === 1) {
-                polylineBounds.extend(smoothedPoints[0]);
-            }
-        });
-
-        if (cleanTelemetry.length > 0 && polylineBounds.isValid()) {
-            map.fitBounds(polylineBounds, { padding: [50, 50] });
-        }
-
-        // 7. Algoritmo para encontrar y reportar Paradas Estáticas (Still Stops)
-        // Agrupamos puntos consecutivos con actividad 'still'
-        var staticStops = [];
-        var currentStopGroup = [];
-
-        telemetryHistory.forEach(function(point) {
-            var act = (point.activity || '').toLowerCase();
-            if (act === 'still') {
-                currentStopGroup.push(point);
-            } else {
-                if (currentStopGroup.length > 0) {
-                    processStopGroup(currentStopGroup);
-                    currentStopGroup = [];
-                }
-            }
-        });
-        if (currentStopGroup.length > 0) {
-            processStopGroup(currentStopGroup);
-        }
-
-        function processStopGroup(group) {
-            var first = group[0];
-            var last = group[group.length - 1];
-            
-            // Calcular tiempo de reposo
-            var start = new Date(first.time);
-            var end = new Date(last.time);
-            var durationMs = end - start;
-            var durationMins = Math.round(durationMs / 60000);
-            
-            // Si el tiempo es menor a 1 minuto, le damos 1 min por defecto de reporte
-            if (durationMins < 1) durationMins = 2; 
-
-            // Calcular uso de pantalla en minutos sumando los tramos donde estuvo encendida
-            var screenActiveMs = 0;
-            for (var i = 0; i < group.length - 1; i++) {
-                if (group[i].screen_active) {
-                    screenActiveMs += (new Date(group[i+1].time) - new Date(group[i].time));
-                }
-            }
-            var screenMins = Math.round(screenActiveMs / 60000);
-            
-            staticStops.push({
-                lat: first.lat,
-                lng: first.lng,
-                restingTime: durationMins,
-                screenMinutes: screenMins,
-                battery: last.battery,
-                timeLabel: first.label_time + ' - ' + last.label_time
+        // ── Renderiza las polylines de la ruta sobre el mapa ──
+        function renderRoute(points) {
+            var sorted = [...points].sort(function(a, b) {
+                return new Date(a.time) - new Date(b.time);
             });
+
+            // Filtrar anomalías
+            var clean = [];
+            sorted.forEach(function (p, i) {
+                if (i > 0 && isAnomalousJump(clean[clean.length - 1], p)) return;
+                clean.push(p);
+            });
+
+            // Guardar limpio para bearing inicial del SSE
+            cleanTelemetry = clean;
+
+            // Segmentar por tipo de movimiento Y por GAPS (Desconexiones de más de 5 minutos)
+            var segs = [], curSeg = [], curType = null;
+            var prevTime = null;
+
+            clean.forEach(function (p) {
+                var t = p.movement_type || 'DEFAULT';
+                var time = new Date(p.time).getTime();
+                var isGap = prevTime && (time - prevTime > 5 * 60000); // 5 min
+                
+                if (t !== curType || isGap) {
+                    if (curSeg.length) {
+                        segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, points: curSeg, isGapBefore: isGap });
+                    }
+                    curSeg = isGap ? [p] : (curSeg.length ? [curSeg[curSeg.length - 1], p] : [p]);
+                    curType = t;
+                } else {
+                    curSeg.push(p);
+                }
+                prevTime = time;
+                // Assign segId to the point for timeline sync
+                p._segId = 'seg-' + new Date(curSeg[0].time).getTime();
+            });
+            if (curSeg.length) segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, points: curSeg, isGapBefore: false });
+
+            // Renderizar polylines
+            var bounds = L.latLngBounds();
+            segs.forEach(function (seg, index) {
+                var style = routeStyles[seg.type] || routeStyles['DEFAULT'];
+                var raw   = seg.points.map(function (p) { return [p.lat, p.lng]; });
+                var pts   = raw;
+
+                // Suavizado para VEHICLE
+                if (seg.type === 'VEHICLE' && raw.length >= 3) {
+                    pts = [raw[0]];
+                    for (var i = 1; i < raw.length - 1; i++) {
+                        pts.push([
+                            (raw[i-1][0] + raw[i][0]*2 + raw[i+1][0]) / 4,
+                            (raw[i-1][1] + raw[i][1]*2 + raw[i+1][1]) / 4,
+                        ]);
+                    }
+                    pts.push(raw[raw.length - 1]);
+                }
+
+                if (pts.length > 1) {
+                    var pl = L.polyline(pts, { ...style, origType: seg.type }).addTo(map);
+                    
+                    // -- Cálculos de Metadata para el Segmento --
+                    var startTime = new Date(seg.points[0].time);
+                    var endTime = new Date(seg.points[seg.points.length - 1].time);
+                    var durationMins = Math.max(1, Math.round((endTime - startTime) / 60000));
+                    
+                    var totalDistance = 0, totalSpeed = 0, validSpeeds = 0;
+                    for (var i = 1; i < seg.points.length; i++) {
+                        totalDistance += haversineMeters(seg.points[i-1], seg.points[i]);
+                        if (seg.points[i].speed_kmh) {
+                            totalSpeed += parseFloat(seg.points[i].speed_kmh);
+                            validSpeeds++;
+                        }
+                    }
+                    var avgSpeed = validSpeeds > 0 ? (totalSpeed / validSpeeds).toFixed(1) : 0;
+                    var distStr = totalDistance > 1000 ? (totalDistance / 1000).toFixed(2) + ' km' : Math.round(totalDistance) + ' m';
+                    
+                    var tooltipHtml = `
+                        <div class="text-slate-900 font-sans p-1 min-w-[160px]">
+                            <b class="text-xs uppercase text-blue-600 block mb-1">🏁 Tramo ${seg.type}</b>
+                            <div class="text-[10px] space-y-0.5 font-bold text-slate-700">
+                                <p>⏱️ ${startTime.getHours().toString().padStart(2,'0')}:${startTime.getMinutes().toString().padStart(2,'0')} - ${endTime.getHours().toString().padStart(2,'0')}:${endTime.getMinutes().toString().padStart(2,'0')} (${durationMins} min)</p>
+                                <p>📏 Distancia: ${distStr}</p>
+                                <p>⚡ Vel. Promedio: ${avgSpeed} km/h</p>
+                                <p class="text-[8px] text-slate-400 font-mono pt-1">Clic para analizar tramo</p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    pl.bindTooltip(tooltipHtml, { sticky: true, className: 'shadow-xl rounded-xl border-none' });
+                    
+                    // -- Eventos de Interacción --
+                    pl.on('mouseover', function(e) {
+                        this.setStyle({ weight: style.weight + 4, opacity: 1 });
+                    });
+                    pl.on('mouseout', function(e) {
+                        this.setStyle({ weight: style.weight, opacity: style.opacity });
+                        if (window._activeSegmentId === seg.id) {
+                            this.setStyle({ color: '#fff', weight: style.weight + 2 }); // Keep highlighted if active
+                        }
+                    });
+                    pl.on('click', function(e) {
+                        map.fitBounds(this.getBounds(), { padding: [50, 50], animate: true, duration: 0.5 });
+                        highlightTimelineSegment(seg.id);
+                        highlightMapSegment(seg.id, this);
+                    });
+                    
+                    pl._segId = seg.id; // Almacenar el ID interno para búsquedas
+                    activeRouteLayers.push(pl);
+                    bounds.extend(pl.getBounds());
+                } else if (pts.length === 1) {
+                    bounds.extend(pts[0]);
+                }
+
+                // Dibujar línea punteada gris si hubo un Gap/Desconexión
+                if (seg.isGapBefore && index > 0 && seg.points.length > 0) {
+                    var prevSeg = segs[index - 1];
+                    if (prevSeg.points.length > 0) {
+                        var p1 = prevSeg.points[prevSeg.points.length - 1];
+                        var p2 = seg.points[0];
+                        var gapPl = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
+                            color: '#475569', weight: 3, dashArray: '4, 8', opacity: 0.6, lineJoin: 'round'
+                        }).addTo(map);
+                        gapPl.bindTooltip("Pérdida de Señal / Offline", {className: 'text-xs font-mono font-bold text-slate-400 bg-[#131416] border-slate-700'});
+                        activeRouteLayers.push(gapPl);
+                    }
+                }
+            });
+
+            if (clean.length > 0 && bounds.isValid()) {
+                map.fitBounds(bounds, { padding: [50, 50] });
+            }
+            
+            // Actualizar lista visual de historial
+            updateHistoryList(clean);
         }
 
-        // 8. Colocar Marcadores Amarillos con Flechas para las Paradas Estáticas
-        staticStops.forEach(function(stop) {
-            var stopIcon = L.divIcon({
-                className: 'custom-stop-icon',
-                html: `
-                    <div style="position: relative; display: flex; align-items: center; justify-content: center;">
-                        <div style="background-color: #ffd600; width: 14px; height: 14px; border: 2.5px solid #131416; border-radius: 50%; box-shadow: 0 0 12px #ffd600; z-index: 2; position: absolute;"></div>
-                        <div class="pulse-yellow" style="background-color: #ffd600; width: 14px; height: 14px; border-radius: 50%; position: absolute;"></div>
-                        <span class="material-symbols-outlined text-[#ffd600]" style="font-size: 20px; font-weight: bold; position: absolute; top: -20px; text-shadow: 0 0 8px #ffd600;">arrow_downward</span>
-                    </div>`,
+        // ── T6: Icono de parada estática ──
+        function buildStopIcon() {
+            return L.divIcon({
+                className: '',
+                html: `<div style="position:relative;display:flex;align-items:center;justify-content:center;">
+                    <div style="background:#ffd600;width:14px;height:14px;border:2.5px solid #131416;border-radius:50%;box-shadow:0 0 12px #ffd600;z-index:2;position:absolute;"></div>
+                    <div class="pulse-yellow" style="background:#ffd600;width:14px;height:14px;border-radius:50%;position:absolute;"></div>
+                    <span class="material-symbols-outlined" style="color:#ffd600;font-size:20px;font-weight:bold;position:absolute;top:-20px;text-shadow:0 0 8px #ffd600;">arrow_downward</span>
+                </div>`,
                 iconSize: [24, 24],
-                iconAnchor: [12, 12]
+                iconAnchor: [12, 12],
+            });
+        }
+
+        // ── T6: Renderiza paradas estáticas con clustering ──
+        function renderStops(points) {
+            // Calcular grupos de paradas
+            var stops = [];
+            var group = [];
+
+            function processGroup(g) {
+                if (!g.length) return;
+                var first = g[0], last = g[g.length - 1];
+                var durationMins = Math.max(2, Math.round((new Date(last.time) - new Date(first.time)) / 60000));
+                var screenMs = 0;
+                for (var i = 0; i < g.length - 1; i++) {
+                    if (g[i].screen_active) screenMs += (new Date(g[i+1].time) - new Date(g[i].time));
+                }
+                stops.push({
+                    lat: first.lat, lng: first.lng,
+                    restingTime: durationMins,
+                    screenMinutes: Math.round(screenMs / 60000),
+                    battery: last.battery ?? last.battery_level ?? '--',
+                    timeLabel: (first.label_time || '') + ' - ' + (last.label_time || ''),
+                });
+            }
+
+            points.forEach(function (p) {
+                if ((p.activity || '').toLowerCase() === 'still') {
+                    group.push(p);
+                } else {
+                    processGroup(group);
+                    group = [];
+                }
+            });
+            processGroup(group);
+
+            if (!stops.length) return;
+
+            // T6: Cluster group con colores Warey
+            var cluster = L.markerClusterGroup({
+                maxClusterRadius: 40,
+                showCoverageOnHover: false,
+                iconCreateFunction: function (c) {
+                    return L.divIcon({
+                        html: `<div style="
+                            background:rgba(255,214,0,0.15);border:2px solid #ffd600;
+                            border-radius:50%;width:36px;height:36px;
+                            display:flex;align-items:center;justify-content:center;
+                            font-size:11px;font-weight:bold;color:#ffd600;
+                        ">${c.getChildCount()}</div>`,
+                        iconSize: [36, 36],
+                        iconAnchor: [18, 18],
+                    });
+                },
             });
 
-            L.marker([stop.lat, stop.lng], { icon: stopIcon })
-                .addTo(map)
-                .bindPopup(`
+            stops.forEach(function (stop) {
+                var m = L.marker([stop.lat, stop.lng], { icon: buildStopIcon() });
+                m.bindPopup(`
                     <div class="text-slate-900 font-sans p-1">
                         <b class="text-xs uppercase text-amber-500 font-bold block mb-1">📍 Parada Estática</b>
                         <div class="text-[10px] space-y-1 font-semibold text-slate-700">
@@ -583,8 +671,145 @@
                             <p>🔋 <b>Batería:</b> ${stop.battery}%</p>
                             <p class="text-[8px] text-slate-400 font-mono pt-1">Hora: ${stop.timeLabel}</p>
                         </div>
+                    </div>`);
+                cluster.addLayer(m);
+            });
+
+            map.addLayer(cluster);
+            activeStopCluster = cluster;
+        }
+
+        // ── T5: Loader overlay mientras carga el historial ──
+        var mapLoader = document.getElementById('map-loader');
+        function showLoader() { if (mapLoader) mapLoader.classList.remove('hidden'); }
+        function hideLoader() { if (mapLoader) mapLoader.classList.add('hidden'); }
+
+        // Variable limpia disponible para el SSE (bearing inicial)
+        var cleanTelemetry = [];
+        
+        // ── Renderiza dinámicamente la lista de historial ──
+        function updateHistoryList(points) {
+            var container = document.getElementById('history-container');
+            if (!container) return;
+            
+            container.innerHTML = '';
+            if (points.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-slate-600 text-xs italic">Sin transmisiones reportadas para este día.</div>';
+                return;
+            }
+            
+            // Revertir para mostrar los más recientes arriba
+            var reversed = [...points].reverse();
+            // Tomar los últimos 20
+            var toShow = reversed.slice(0, 20);
+            
+            var prevTime = reversed.length > 20 ? new Date(reversed[20].time).getTime() : null;
+            
+            toShow.forEach(function(p, i) {
+                var time = new Date(p.time).getTime();
+                var nextP = i < toShow.length - 1 ? toShow[i+1] : null;
+                var isGap = false;
+                
+                if (nextP) {
+                    var nTime = new Date(nextP.time).getTime();
+                    if (time - nTime > 5 * 60000) isGap = true;
+                }
+                
+                var colorClass = (p.activity === 'moving' || ['WALKING','RUNNING','VEHICLE'].includes(p.movement_type)) ? 'text-[#6CD400]' : 'text-slate-500';
+                var speedHtml = p.speed_kmh != null ? `Velocidad: <span class="text-emerald-400">${parseFloat(p.speed_kmh).toFixed(1)} km/h</span>` : '';
+                var cardinalHtml = p.cardinal ? ` • Dir: <span class="text-blue-400">${p.cardinal} (${Math.round(p.bearing || 0)}°)</span>` : '';
+                var motHtml = p.motivo ? ` • Mot: <span class="text-purple-400">${p.motivo.replace('_', ' ').toUpperCase()}</span>` : '';
+                
+                var gapHtml = '';
+                if (isGap) {
+                    var diffMins = Math.round((time - new Date(nextP.time).getTime()) / 60000);
+                    gapHtml = `
+                    <div class="flex items-center justify-center gap-2 py-1 opacity-60">
+                        <div class="h-px bg-slate-700 flex-1"></div>
+                        <span class="text-[8px] font-mono text-slate-500 bg-[#131416] px-2 rounded-full border border-slate-700">Offline / Gap (${diffMins}m)</span>
+                        <div class="h-px bg-slate-700 flex-1"></div>
+                    </div>`;
+                }
+
+                container.innerHTML += `
+                    <div id="${p._segId}-item-${i}" data-seg-id="${p._segId}" onclick="clickTimelineItem('${p._segId}')" class="timeline-item cursor-pointer p-3 rounded-xl border border-white/5 bg-transparent opacity-80 hover:opacity-100 hover:bg-slate-800/40 transition-all">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-white font-bold text-[11px]">${p.label_time}</span>
+                            <span class="text-[10px] font-bold font-mono ${colorClass}">${(p.movement_type || p.activity).toUpperCase()}</span>
+                        </div>
+                        <p class="text-[9px] text-slate-400 font-mono">
+                            Bat: ${p.battery}% • Acc: ${p.accuracy ? Math.round(p.accuracy)+'m' : '--'} ${cardinalHtml}
+                        </p>
+                        <p class="text-[9px] text-slate-500 font-mono mt-0.5">${speedHtml}${motHtml}</p>
                     </div>
-                `);
+                    ${gapHtml}
+                `;
+            });
+        }
+        
+        // ── Funciones de Sincronización Mapa <-> Timeline ──
+        window._activeSegmentId = null;
+
+        function highlightTimelineSegment(segId) {
+            document.querySelectorAll('.timeline-item').forEach(el => {
+                el.classList.remove('ring-2', 'ring-[#00e5ff]', 'bg-slate-800/80');
+            });
+            var target = document.querySelector(`.timeline-item[data-seg-id="${segId}"]`);
+            if (target) {
+                target.classList.add('ring-2', 'ring-[#00e5ff]', 'bg-slate-800/80');
+                target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }
+
+        function highlightMapSegment(segId, layerInstance = null) {
+            window._activeSegmentId = segId;
+            activeRouteLayers.forEach(pl => {
+                if (pl._segId) {
+                    // Restaurar estilo original
+                    var style = routeStyles[pl.options.origType || 'DEFAULT'];
+                    if (style) pl.setStyle({ color: style.color, weight: style.weight, opacity: style.opacity });
+                }
+            });
+            if (layerInstance) {
+                layerInstance.setStyle({ color: '#ffffff', weight: layerInstance.options.weight + 2, opacity: 1 });
+            } else {
+                var pl = activeRouteLayers.find(l => l._segId === segId);
+                if (pl) {
+                    pl.setStyle({ color: '#ffffff', weight: pl.options.weight + 2, opacity: 1 });
+                    map.fitBounds(pl.getBounds(), { padding: [50, 50], animate: true, duration: 0.5 });
+                }
+            }
+        }
+
+        function clickTimelineItem(segId) {
+            highlightTimelineSegment(segId);
+            highlightMapSegment(segId);
+        }
+
+        // ── T5: Fetch del historial desde la API (no Blade) ──
+        async function loadHistory(date) {
+            showLoader();
+            clearMapHistory();
+
+            try {
+                var res = await fetch('{{ route("device.history", $device->id) }}?date=' + encodeURIComponent(date));
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                var json = await res.json();
+
+                if (json.success && json.points && json.points.length > 0) {
+                    renderRoute(json.points);
+                    renderStops(json.points);
+                }
+            } catch (err) {
+                console.warn('[Warey] Error cargando historial:', err);
+            } finally {
+                hideLoader();
+            }
+        }
+
+        // Cargar historial inicial al abrir la página
+        document.addEventListener('DOMContentLoaded', function () {
+            loadHistory('{{ $selectedDate }}');
         });
 
         // 9. Dibujar las Zonas Seguras de la Base de Datos
@@ -607,17 +832,88 @@
             `);
         @endforeach
 
-        // 10. Icono de ubicación actual pulsante verde
-        var unitIcon = L.divIcon({
-            className: 'custom-div-icon',
-            html: `
-                <div style="position: relative;">
-                    <div style="background-color: #6CD400; width: 24px; height: 24px; border: 4px solid #ffffff; border-radius: 50%; box-shadow: 0 0 20px rgba(108, 212, 0, 0.8); z-index: 2; position: absolute;"></div>
-                    <div style="background-color: #6CD400; width: 24px; height: 24px; border-radius: 50%; animation: pulse 2s infinite; opacity: 0.5; position: absolute;"></div>
+        // T3: Calcular bearing (dirección de movimiento) entre los 2 últimos puntos GPS
+        function calculateBearing(p1, p2) {
+            var lat1 = p1.lat * Math.PI / 180;
+            var lat2 = p2.lat * Math.PI / 180;
+            var dLon = (p2.lng - p1.lng) * Math.PI / 180;
+            var y = Math.sin(dLon) * Math.cos(lat2);
+            var x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+
+        function haversineMeters(p1, p2) {
+            var R = 6371000;
+            var dLat = (p2.lat - p1.lat) * Math.PI / 180;
+            var dLon = (p2.lng - p1.lng) * Math.PI / 180;
+            var a = Math.sin(dLat/2) * Math.sin(dLat/2)
+                  + Math.cos(p1.lat * Math.PI / 180) * Math.cos(p2.lat * Math.PI / 180)
+                  * Math.sin(dLon/2) * Math.sin(dLon/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        // Determinar bearing. Usar la de la DB si existe, si no calcularla
+        var currentBearing = 0;
+        var showArrow = false;
+        var currentActivity = '{{ $device->activity ?? "still" }}';
+
+        if (cleanTelemetry.length > 0) {
+            var pLast = cleanTelemetry[cleanTelemetry.length - 1];
+            
+            if (pLast.bearing !== null && pLast.bearing !== undefined) {
+                currentBearing = pLast.bearing;
+                showArrow = (currentActivity !== 'still' && pLast.speed_kmh > 1);
+            } else if (cleanTelemetry.length >= 2) {
+                // Fallback a cálculo trigonométrico
+                var pPrev = cleanTelemetry[cleanTelemetry.length - 2];
+                var distBetween = haversineMeters(pPrev, pLast);
+                if (distBetween > 5) {
+                    currentBearing = calculateBearing(pPrev, pLast);
+                    showArrow = (currentActivity !== 'still');
+                }
+            }
+        }
+
+        // 10. Icono de ubicación actual con bearing indicator
+        function buildUnitIcon(bearing, isMoving) {
+            var arrowHtml = isMoving
+                ? `<div style="
+                    position:absolute; top:-11px; left:50%;
+                    transform:translateX(-50%);
+                    width:0; height:0;
+                    border-left:5px solid transparent;
+                    border-right:5px solid transparent;
+                    border-bottom:11px solid #6CD400;
+                    filter:drop-shadow(0 0 4px #6CD400);
+                  "></div>`
+                : '';
+
+            return L.divIcon({
+                className: '',
+                html: `<div style="
+                    position:relative; width:28px; height:28px;
+                    transform:rotate(${bearing}deg);
+                    display:flex; align-items:center; justify-content:center;
+                ">
+                    ${arrowHtml}
+                    <div style="
+                        background:#6CD400; width:22px; height:22px;
+                        border:3.5px solid #ffffff; border-radius:50%;
+                        box-shadow:0 0 20px rgba(108,212,0,0.8);
+                        position:absolute;
+                    "></div>
+                    <div style="
+                        background:#6CD400; width:22px; height:22px;
+                        border-radius:50%; animation:pulse 2s infinite;
+                        opacity:0.45; position:absolute;
+                    "></div>
                 </div>`,
-            iconSize: [24, 24],
-            iconAnchor: [12, 12]
-        });
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+        }
+
+        var unitIcon = buildUnitIcon(currentBearing, showArrow);
 
         // Colocar Marcador Actual
         if (lat && lng) {
@@ -731,6 +1027,162 @@
                 }
             }, 100);
         });
+
+        // ─────────────────────────────────────────────────────────
+        // T7-frontend: SSE en tiempo real para la vista del device
+        // ─────────────────────────────────────────────────────────
+        var liveDot       = document.getElementById('live-dot');
+        var liveText      = document.getElementById('live-text');
+        var liveMarker    = null;   // marker dinámico (único owner del punto actual)
+        var autoFollow    = true;   // seguir al device automáticamente
+        var sseReconnects = 0;
+        var sseInstance   = null;
+
+        // Detener auto-follow si el usuario hace pan manualmente
+        map.on('dragstart', function () { autoFollow = false; });
+
+        // ── Animación suave del marker entre dos coordenadas ──
+        function animateMarker(marker, newLatLng, durationMs) {
+            var start    = marker.getLatLng();
+            var t0       = performance.now();
+
+            function easeInOut(t) {
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            }
+
+            function step(now) {
+                var t   = Math.min((now - t0) / durationMs, 1);
+                var e   = easeInOut(t);
+                var lat = start.lat + (newLatLng.lat - start.lat) * e;
+                var lng = start.lng + (newLatLng.lng - start.lng) * e;
+                marker.setLatLng([lat, lng]);
+                if (t < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        // ── Actualizar indicador LIVE ──
+        function setLiveStatus(state) {
+            var states = {
+                connecting: { dot: 'bg-amber-400 animate-pulse', text: 'Conectando...', color: 'text-amber-400' },
+                live:       { dot: 'bg-emerald-500 animate-pulse', text: '● LIVE',       color: 'text-emerald-400' },
+                error:      { dot: 'bg-red-500',                   text: 'Sin señal',    color: 'text-red-400'    },
+            };
+            var s = states[state] || states.error;
+            liveDot.className  = 'size-2 rounded-full ' + s.dot;
+            liveText.className = 'text-[10px] font-mono ' + s.color;
+            liveText.textContent = s.text;
+        }
+
+        // ── Procesar evento 'position' del SSE ──
+        function handlePosition(data) {
+            if (!data.latitude || !data.longitude) return;
+
+            var newLatLng = L.latLng(data.latitude, data.longitude);
+            var isMoving  = (data.activity !== 'still');
+
+            // Usar bearing emitido por SSE, o mantener actual
+            var bearing = currentBearing;
+            if (data.bearing !== null && data.bearing !== undefined) {
+                bearing = data.bearing;
+            } else if (liveMarker) {
+                // Fallback cálculo
+                var prev = liveMarker.getLatLng();
+                var dist = haversineMeters(
+                    { lat: prev.lat, lng: prev.lng },
+                    { lat: data.latitude, lng: data.longitude }
+                );
+                if (dist > 5) {
+                    bearing = calculateBearing(
+                        { lat: prev.lat, lng: prev.lng },
+                        { lat: data.latitude, lng: data.longitude }
+                    );
+                }
+            }
+            currentBearing = bearing; // actualizar global
+
+            var newIcon = buildUnitIcon(bearing, isMoving);
+
+            if (!liveMarker) {
+                // Primera posición: crear marker
+                liveMarker = L.marker(newLatLng, { icon: newIcon }).addTo(map);
+                liveMarker.bindPopup('<b class="text-slate-900">{{ $device->alias }} (En vivo)</b>');
+            } else {
+                // Actualizar icono y animar hacia nueva posición
+                liveMarker.setIcon(newIcon);
+                animateMarker(liveMarker, newLatLng, 2000);
+            }
+
+            // Auto-follow: centrar el mapa suavemente si está activo
+            if (autoFollow) {
+                map.panTo(newLatLng, { animate: true, duration: 1.0 });
+            }
+
+            // Actualizar sidebar sin recargar página
+            var speedEl    = document.getElementById('live-speed');
+            var lastSeenEl = document.getElementById('live-last-seen');
+
+            if (speedEl) {
+                speedEl.textContent = data.speed_kmh != null
+                    ? parseFloat(data.speed_kmh).toFixed(1) + ' km/h'
+                    : '—';
+            }
+            if (lastSeenEl) {
+                var inner = lastSeenEl.querySelector('span');
+                if (inner) {
+                    lastSeenEl.textContent = '';
+                    lastSeenEl.appendChild(inner);
+                    lastSeenEl.append(' ' + (data.last_seen || '—'));
+                } else {
+                    lastSeenEl.textContent = data.last_seen || '—';
+                }
+            }
+
+            setLiveStatus('live');
+        }
+
+        // ── Conectar al SSE con backoff exponencial ──
+        function connectDeviceSSE() {
+            setLiveStatus('connecting');
+
+            if (sseInstance) {
+                sseInstance.close();
+            }
+
+            sseInstance = new EventSource('{{ route("device.sse", $device->id) }}');
+
+            sseInstance.addEventListener('position', function (e) {
+                try {
+                    sseReconnects = 0;
+                    handlePosition(JSON.parse(e.data));
+                } catch (err) {
+                    console.warn('[Warey SSE] parse error:', err);
+                }
+            });
+
+            sseInstance.addEventListener('heartbeat', function () {
+                // La conexión sigue viva aunque no haya movimiento
+                if (liveMarker) setLiveStatus('live');
+            });
+
+            sseInstance.onopen = function () {
+                sseReconnects = 0;
+                setLiveStatus('live');
+            };
+
+            sseInstance.onerror = function () {
+                sseReconnects++;
+                setLiveStatus('error');
+                sseInstance.close();
+
+                // Backoff: 3s, 6s, 12s, 24s, máx 30s
+                var delay = Math.min(3000 * Math.pow(2, sseReconnects - 1), 30000);
+                setTimeout(connectDeviceSSE, delay);
+            };
+        }
+
+        // Iniciar SSE al cargar la página
+        document.addEventListener('DOMContentLoaded', connectDeviceSSE);
     </script>
 </body>
 </html>
