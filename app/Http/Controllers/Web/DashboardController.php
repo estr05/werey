@@ -286,7 +286,7 @@ class DashboardController extends Controller
      *   - event: update  → payload con stats + devices
      *   - event: heartbeat → mantiene la conexión activa
      */
-    public function sseStream(): Response
+    public function sseStream(): StreamedResponse
     {
         $user = Auth::user();
 
@@ -380,7 +380,7 @@ class DashboardController extends Controller
      * Emite evento 'position' cuando lat/lng cambia, 'heartbeat' cuando no hay cambios.
      * GET /device/{id}/sse
      */
-    public function deviceSseStream(Request $request, $id): Response
+    public function deviceSseStream(Request $request, $id): StreamedResponse
     {
         $device = Auth::user()->devices()->findOrFail($id);
         session_write_close();
