@@ -72,6 +72,7 @@ class LocationController extends Controller
             'speed_kmh'          => ['nullable', 'numeric'],
             'intervalo_aplicado' => ['nullable', 'integer'],
             'motivo'             => ['nullable', 'string'],
+            'bearing'            => ['nullable', 'numeric'],
         ]);
 
         // Resolver el dispositivo desde el token de Sanctum (device_token:<id>)
@@ -96,7 +97,7 @@ class LocationController extends Controller
 
         $movementType = $validated['movement_type'] ?? 'STATIC';
 
-        // Calcular speed_kmh, intervalo_aplicado y motivo si no se envían
+        // Calcular speed_kmh, intervalo_aplicado, motivo y bearing si no se envían
         $helper = new TelemetryHelper();
         $speedKmh = $helper->calculateSpeedKmh(
             $validated['speed_kmh'] ?? null,
@@ -107,6 +108,11 @@ class LocationController extends Controller
         $isSafe = $validated['is_safe_zone'] ?? true;
         $intervalo = $validated['intervalo_aplicado'] ?? $helper->calculateInterval($speedKmh, $isSafe);
         $motivo = $validated['motivo'] ?? $helper->calculateMotivo($speedKmh, $isSafe);
+        $bearing = $helper->processBearing(
+            $validated['bearing'] ?? null,
+            $device->bearing,
+            $speedKmh
+        );
 
         Log::info('[Location] Frame GPS recibido', [
             'device_id'          => $device->id,
@@ -114,6 +120,7 @@ class LocationController extends Controller
             'longitude'          => $validated['longitude'],
             'movement_type'      => $movementType,
             'accuracy'           => $validated['accuracy'] ?? null,
+            'bearing'            => $bearing,
             'speed_kmh'          => $speedKmh,
             'intervalo_aplicado' => $intervalo,
             'motivo'             => $motivo,
@@ -142,6 +149,7 @@ class LocationController extends Controller
                 'speed_kmh'          => $speedKmh,
                 'intervalo_aplicado' => $intervalo,
                 'motivo'             => $motivo,
+                'bearing'            => $bearing,
                 'last_seen'          => now(),
             ]);
         }
@@ -161,6 +169,7 @@ class LocationController extends Controller
             'activity'           => strtolower($movementType),
             'movement_type'      => $movementType,
             'screen_active'      => $device->screen_active,       // Hereda del último device-status
+            'bearing'            => $bearing,
             'speed_kmh'          => $speedKmh,
             'intervalo_aplicado' => $intervalo,
             'motivo'             => $motivo,
