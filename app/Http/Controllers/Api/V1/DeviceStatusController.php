@@ -40,6 +40,20 @@ class DeviceStatusController extends Controller
      */
     public function store(Request $request): JsonResponse
     {
+        // ── Normalizar camelCase → snake_case ──────────────────────────────
+        // Por si el móvil envía camelCase (batteryLevel, isCharging, etc.)
+        $request->merge([
+            'battery_level'   => $request->input('battery_level', $request->input('batteryLevel')),
+            'is_charging'     => $request->input('is_charging', $request->input('isCharging')),
+            'connection_type' => $request->input('connection_type', $request->input('connectionType')),
+            'signal_strength' => $request->input('signal_strength', $request->input('signalStrength')),
+            'has_internet'    => $request->input('has_internet', $request->input('hasInternet')),
+            'tracking_state'  => $request->input('tracking_state', $request->input('trackingState')),
+            'activity_status' => $request->input('activity_status', $request->input('activityStatus')),
+            'captured_at'     => $request->input('captured_at', $request->input('capturedAt')),
+            'screen_active'   => $request->input('screen_active', $request->input('screenActive')),
+        ]);
+
         $validated = $request->validate([
             'battery_level'   => ['required', 'integer', 'between:0,100'],
             'is_charging'     => ['required', 'boolean'],

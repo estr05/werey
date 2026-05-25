@@ -15,9 +15,39 @@ class HandshakeController extends Controller
      * código generado en el panel web (WRY-XXXX-XXXX).
      *
      * POST /api/v1/devices/handshake
+     *
+     * La app móvil envía los campos del fingerprint en camelCase:
+     *   { pairing_code, deviceUuid, model, manufacturer, android_version,
+     *     app_version, device_fingerprint: {...}, confirm_replacement }
+     * Este controlador normaliza todo a snake_case antes de validar.
      */
     public function pair(Request $request): JsonResponse
     {
+        // ── 0. Normalizar camelCase/alias → snake_case ───────────────────────
+        // La app móvil (warey_movil) envía estos campos desde
+        // HandshakeRemoteDataSource con los nombres del DeviceFingerprint.
+
+        // Extraer campos del objeto device_fingerprint anidado como fallback
+        $fingerprint = $request->input('device_fingerprint', []);
+        if (is_array($fingerprint)) {
+            foreach ($fingerprint as $key => $value) {
+                if (!$request->has($key)) {
+                    $request->merge([$key => $value]);
+                }
+            }
+        }
+
+        $request->merge([
+            // Mapeo de camelCase que envía DeviceFingerprint.toJson()
+            'device_uuid'         => $request->input('device_uuid', $request->input('deviceUuid')),
+            'device_manufacturer' => $request->input('device_manufacturer', $request->input('manufacturer')),
+            'device_model'        => $request->input('device_model', $request->input('model')),
+            'os_version'          => $request->input('os_version', $request->input('android_version')),
+            'app_version'         => $request->input('app_version'),
+            // confirm_replacement → force (la app móvil usa confirm_replacement)
+            'force'               => $request->input('force', $request->input('confirm_replacement')),
+        ]);
+
         $request->validate([
             'pairing_code'        => ['required', 'string'],
             'device_uuid'         => ['required', 'string', 'max:255'],
