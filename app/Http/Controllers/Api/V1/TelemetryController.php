@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\LocationHistory;
+use App\Services\SpatialFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -154,6 +155,22 @@ class TelemetryController extends Controller
             }
         }
 
+        // 4. Filtrado Espacial Inteligente (SpatialFilter)
+        $spatialData = [];
+        if ($hasGps && !$isHeartbeat) {
+            $filter = new SpatialFilter();
+            $spatialData = $filter->process($device, $validated);
+
+            if ($spatialData['is_outlier'] ?? false) {
+                // Es basura, lo degradamos a heartbeat o simplemente lo ignoramos espacialmente
+                $isHeartbeat = true; 
+            } else {
+                // Actualizamos las coordenadas con las suavizadas
+                $validated['latitude'] = $spatialData['latitude'];
+                $validated['longitude'] = $spatialData['longitude'];
+            }
+        }
+
         Log::info('[Telemetry] Paquete recibido', [
             'device_id'       => $device->id,
             'is_heartbeat'    => $isHeartbeat,
@@ -292,8 +309,12 @@ class TelemetryController extends Controller
 
                 LocationHistory::create([
                     'device_id'          => $device->id,
-                    'latitude'           => $validated['latitude'],
-                    'longitude'          => $validated['longitude'],
+                    'latitude'           => $validated['latitude'], // Posiblemente suavizada
+                    'longitude'          => $validated['longitude'], // Posiblemente suavizada
+                    'raw_latitude'       => $spatialData['raw_latitude'] ?? $validated['latitude'],
+                    'raw_longitude'      => $spatialData['raw_longitude'] ?? $validated['longitude'],
+                    'confidence_score'   => $spatialData['confidence_score'] ?? 100,
+                    'is_outlier'         => $spatialData['is_outlier'] ?? false,
                     'location'           => \Illuminate\Support\Facades\DB::raw("ST_SetSRID(ST_MakePoint({$lon}, {$lat}), 4326)"),
                     'accuracy'           => $accuracy,
                     'bearing'            => $bearing,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\LocationHistory;
+use App\Services\SpatialFilter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -158,23 +159,42 @@ class LocationController extends Controller
             'motivo'             => $motivo,
         ]);
 
-        // 1. Actualizar posición y estado actual del dispositivo
-        //    También refrescamos last_seen para mantener el dispositivo como "online"
-        $device->update([
-            'latitude'           => $validated['latitude'],
-            'longitude'          => $validated['longitude'],
-            'activity'           => strtolower($movementType),
-            'speed_kmh'          => $speedKmh,
-            'intervalo_aplicado' => $intervalo,
-            'motivo'             => $motivo,
-            'last_seen'          => now(),
-        ]);
+        // 4. Filtrado Espacial Inteligente (SpatialFilter)
+        $spatialData = [];
+        $filter = new SpatialFilter();
+        $spatialData = $filter->process($device, $validated);
+
+        if ($spatialData['is_outlier'] ?? false) {
+            // Es basura, no actualizamos la ubicación actual, pero lo guardamos en historial como outlier?
+            // Para simplificar, ignoramos la actualización principal de posición si es outlier.
+            Log::info('[Location] Frame descartado por SpatialFilter', ['device_id' => $device->id]);
+        } else {
+            // Actualizamos las coordenadas con las suavizadas
+            $validated['latitude'] = $spatialData['latitude'];
+            $validated['longitude'] = $spatialData['longitude'];
+            
+            // 1. Actualizar posición y estado actual del dispositivo
+            //    También refrescamos last_seen para mantener el dispositivo como "online"
+            $device->update([
+                'latitude'           => $validated['latitude'],
+                'longitude'          => $validated['longitude'],
+                'activity'           => strtolower($movementType),
+                'speed_kmh'          => $speedKmh,
+                'intervalo_aplicado' => $intervalo,
+                'motivo'             => $motivo,
+                'last_seen'          => now(),
+            ]);
+        }
 
         // 2. Guardar en historial para el mapa del dashboard
         LocationHistory::create([
             'device_id'          => $device->id,
             'latitude'           => $validated['latitude'],
             'longitude'          => $validated['longitude'],
+            'raw_latitude'       => $spatialData['raw_latitude'] ?? $validated['latitude'],
+            'raw_longitude'      => $spatialData['raw_longitude'] ?? $validated['longitude'],
+            'confidence_score'   => $spatialData['confidence_score'] ?? 100,
+            'is_outlier'         => $spatialData['is_outlier'] ?? false,
             'battery_level'      => $device->battery_level,       // Hereda del último device-status
             'is_charging'        => $device->is_charging,         // Hereda del último device-status
             'connection_type'    => $device->connection_type,     // Hereda del último device-status

@@ -364,6 +364,7 @@
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
     <script>
         // 1. Definir coordenadas base y datos de historial
         const lat = {{ $device->latitude ?? 19.4326 }};
@@ -419,13 +420,35 @@
         // T5+T6: Estilos, funciones de renderizado y carga via fetch
         // ─────────────────────────────────────────────────────────
 
-        // Estilos de ruta por tipo de movimiento
-        var routeStyles = {
-            'WALKING': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' },
-            'RUNNING': { color: '#ff0055', weight: 6, opacity: 0.9, dashArray: '4, 8', dashOffset: '0',  lineJoin: 'round' },
-            'VEHICLE': { color: '#6CD400', weight: 6, opacity: 0.9, dashArray: null,   smoothFactor: 2.0, lineJoin: 'round' },
-            'STATIC':  { color: '#888888', weight: 4, opacity: 0.5, dashArray: '2, 4', lineJoin: 'round' },
-            'DEFAULT': { color: '#00e5ff', weight: 5, opacity: 0.8, dashArray: '1, 10', dashOffset: '10', lineJoin: 'round' },
+        // ── Configuración de Confidence (Ajustable) ──
+        const CONFIDENCE = {
+            HIGH: { maxAccuracy: 20 },
+            MEDIUM: { maxAccuracy: 50 }
+            // LOW: > 50
+        };
+
+        function getConfidenceLevel(p) {
+            // Futuro: considerar gaps, velocidad, jitter. Por ahora accuracy base.
+            let acc = p.accuracy || 999;
+            if (acc <= CONFIDENCE.HIGH.maxAccuracy) return 'HIGH';
+            if (acc <= CONFIDENCE.MEDIUM.maxAccuracy) return 'MEDIUM';
+            return 'LOW';
+        }
+
+        // Estilos base de ruta por tipo de movimiento
+        var baseStyles = {
+            'WALKING': { color: '#00e5ff' },
+            'RUNNING': { color: '#ff0055' },
+            'VEHICLE': { color: '#6CD400' },
+            'STATIC':  { color: '#888888' },
+            'DEFAULT': { color: '#00e5ff' },
+        };
+
+        // Modificadores visuales por Confidence
+        var confidenceModifiers = {
+            'HIGH':   { weight: 6, opacity: 0.95, dashArray: null },
+            'MEDIUM': { weight: 4, opacity: 0.65, dashArray: null },
+            'LOW':    { weight: 3, opacity: 0.40, dashArray: '4, 8' }
         };
 
         // Capas activas en el mapa (para limpiar antes de re-renderizar)
@@ -506,21 +529,23 @@
             // Guardar limpio para bearing inicial del SSE
             cleanTelemetry = clean;
 
-            // Segmentar por tipo de movimiento Y por GAPS (Desconexiones de más de 5 minutos)
-            var segs = [], curSeg = [], curType = null;
+            // Segmentar por tipo de movimiento, confidence Y por GAPS (Desconexiones de más de 5 minutos)
+            var segs = [], curSeg = [], curType = null, curConf = null;
             var prevTime = null;
 
             clean.forEach(function (p) {
                 var t = p.movement_type || 'DEFAULT';
+                var conf = getConfidenceLevel(p);
                 var time = new Date(p.time).getTime();
                 var isGap = prevTime && (time - prevTime > 5 * 60000); // 5 min
                 
-                if (t !== curType || isGap) {
+                if (t !== curType || conf !== curConf || isGap) {
                     if (curSeg.length) {
-                        segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, points: curSeg, isGapBefore: isGap });
+                        segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, confidence: curConf, points: curSeg, isGapBefore: isGap });
                     }
                     curSeg = isGap ? [p] : (curSeg.length ? [curSeg[curSeg.length - 1], p] : [p]);
                     curType = t;
+                    curConf = conf;
                 } else {
                     curSeg.push(p);
                 }
@@ -528,20 +553,49 @@
                 // Assign segId to the point for timeline sync
                 p._segId = 'seg-' + new Date(curSeg[0].time).getTime();
             });
-            if (curSeg.length) segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, points: curSeg, isGapBefore: false });
+            if (curSeg.length) segs.push({ id: 'seg-' + new Date(curSeg[0].time).getTime(), type: curType, confidence: curConf, points: curSeg, isGapBefore: false });
 
-            // Renderizar polylines
+            // Renderizar polylines y accuracy halos
             var bounds = L.latLngBounds();
             segs.forEach(function (seg, index) {
-                var style = routeStyles[seg.type] || routeStyles['DEFAULT'];
+                var base = baseStyles[seg.type] || baseStyles['DEFAULT'];
+                var mod = confidenceModifiers[seg.confidence] || confidenceModifiers['LOW'];
+                var style = { color: base.color, weight: mod.weight, opacity: mod.opacity, dashArray: mod.dashArray, lineJoin: 'round' };
+                
                 var raw   = seg.points.map(function (p) { return [p.lat, p.lng]; });
 
-                // Catmull-Rom Spline: suavizar todas las rutas (más muestras en vehículos)
-                var samples = seg.type === 'VEHICLE' ? 16 : (seg.type === 'RUNNING' ? 10 : 8);
-                var pts = raw.length >= 2 ? catmullRomSpline(raw, samples) : raw;
+                var pts = raw;
+                // Suavizado inteligente con Turf.js para segmentos con más de 2 puntos
+                // No suavizamos GAPS, ni aplicamos over-smoothing a tramos rectos.
+                if (raw.length >= 3 && seg.confidence !== 'LOW') {
+                    try {
+                        var line = turf.lineString(seg.points.map(function(p){ return [p.lng, p.lat]; }));
+                        // Sharpness conservador para no distorsionar esquinas reales (0.85 recomendado)
+                        var curved = turf.bezierSpline(line, { resolution: 10000, sharpness: 0.85 });
+                        pts = curved.geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+                    } catch (e) {
+                        console.warn("Turf smoothing failed for segment", e);
+                        pts = raw;
+                    }
+                }
+
+                // Render accuracy halos for points
+                seg.points.forEach(function(p) {
+                    var acc = p.accuracy || 10;
+                    if (acc > 15) { // Solo mostrar halo si es relevante
+                        var halo = L.circle([p.lat, p.lng], {
+                            radius: acc,
+                            color: base.color,
+                            weight: 0,
+                            fillColor: base.color,
+                            fillOpacity: 0.1
+                        }).addTo(map);
+                        activeRouteLayers.push(halo);
+                    }
+                });
 
                 if (pts.length > 1) {
-                    var pl = L.polyline(pts, { ...style, origType: seg.type }).addTo(map);
+                    var pl = L.polyline(pts, { ...style, origType: seg.type, origConf: seg.confidence }).addTo(map);
                     
                     // -- Cálculos de Metadata para el Segmento --
                     var startTime = new Date(seg.points[0].time);
@@ -559,10 +613,13 @@
                     var avgSpeed = validSpeeds > 0 ? (totalSpeed / validSpeeds).toFixed(1) : 0;
                     var distStr = totalDistance > 1000 ? (totalDistance / 1000).toFixed(2) + ' km' : Math.round(totalDistance) + ' m';
                     
+                    var confIcon = seg.confidence === 'HIGH' ? '🟢' : (seg.confidence === 'MEDIUM' ? '🟡' : '🔴');
+                    
                     var tooltipHtml = `
                         <div class="text-slate-900 font-sans p-1 min-w-[160px]">
                             <b class="text-xs uppercase text-blue-600 block mb-1">🏁 Tramo ${seg.type}</b>
                             <div class="text-[10px] space-y-0.5 font-bold text-slate-700">
+                                <p>${confIcon} Confianza: ${seg.confidence}</p>
                                 <p>⏱️ ${startTime.getHours().toString().padStart(2,'0')}:${startTime.getMinutes().toString().padStart(2,'0')} - ${endTime.getHours().toString().padStart(2,'0')}:${endTime.getMinutes().toString().padStart(2,'0')} (${durationMins} min)</p>
                                 <p>📏 Distancia: ${distStr}</p>
                                 <p>⚡ Vel. Promedio: ${avgSpeed} km/h</p>
@@ -815,8 +872,11 @@
             activeRouteLayers.forEach(pl => {
                 if (pl._segId) {
                     // Restaurar estilo original
-                    var style = routeStyles[pl.options.origType || 'DEFAULT'];
-                    if (style) pl.setStyle({ color: style.color, weight: style.weight, opacity: style.opacity });
+                    if (pl.options.origConf) {
+                        var base = baseStyles[pl.options.origType || 'DEFAULT'];
+                        var mod = confidenceModifiers[pl.options.origConf || 'LOW'];
+                        pl.setStyle({ color: base.color, weight: mod.weight, opacity: mod.opacity });
+                    }
                 }
             });
             if (layerInstance) {
