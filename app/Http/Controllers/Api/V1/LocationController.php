@@ -120,8 +120,15 @@ class LocationController extends Controller
             'longitude'          => $validated['longitude'],
             'movement_type'      => $movementType,
             'accuracy'           => $validated['accuracy'] ?? null,
+            'altitude'           => $validated['altitude'] ?? null,
+            'speed_ms'           => $validated['speed'] ?? null,
+            'smoothed_speed_ms'  => $validated['smoothed_speed'] ?? null,
             'bearing'            => $bearing,
             'speed_kmh'          => $speedKmh,
+            'is_safe_zone'       => $validated['is_safe_zone'] ?? null,
+            'zone_name'          => $validated['zone_name'] ?? null,
+            'tracking_state'     => $validated['tracking_state'] ?? null,
+            'captured_at'        => $validated['captured_at'] ?? null,
             'intervalo_aplicado' => $intervalo,
             'motivo'             => $motivo,
         ]);
@@ -155,6 +162,7 @@ class LocationController extends Controller
         }
 
         // 2. Guardar en historial para el mapa del dashboard
+        //    Persiste TODOS los campos enviados por el móvil más los calculados por el backend
         LocationHistory::create([
             'device_id'          => $device->id,
             'latitude'           => $validated['latitude'],
@@ -163,13 +171,23 @@ class LocationController extends Controller
             'raw_longitude'      => $spatialData['raw_longitude'] ?? $validated['longitude'],
             'confidence_score'   => $spatialData['confidence_score'] ?? 100,
             'is_outlier'         => $spatialData['is_outlier'] ?? false,
+            'accuracy'           => $validated['accuracy'] ?? null,          // Precisión GPS
+            'altitude'           => $validated['altitude'] ?? null,          // Altitud (antes se perdía)
+            'speed'              => $validated['speed'] ?? null,             // Velocidad cruda m/s (antes se perdía)
+            'smoothed_speed'     => $validated['smoothed_speed'] ?? null,    // Velocidad suavizada m/s (antes se perdía)
+            'bearing'            => $bearing,
             'battery_level'      => $device->battery_level,       // Hereda del último device-status
             'is_charging'        => $device->is_charging,         // Hereda del último device-status
             'connection_type'    => $device->connection_type,     // Hereda del último device-status
+            'signal_strength'    => $device->signal_strength,     // Hereda del último device-status
+            'has_internet'       => $device->has_internet,        // Hereda del último device-status
             'activity'           => strtolower($movementType),
             'movement_type'      => $movementType,
+            'tracking_state'     => $validated['tracking_state'] ?? null,    // Estado de rastreo original
             'screen_active'      => $device->screen_active,       // Hereda del último device-status
-            'bearing'            => $bearing,
+            'is_safe_zone'       => $validated['is_safe_zone'] ?? null,      // Zona segura (antes se perdía)
+            'zone_name'          => $validated['zone_name'] ?? null,         // Nombre de zona (antes se perdía)
+            'captured_at'        => $validated['captured_at'] ?? null,       // Timestamp del móvil (antes se perdía)
             'speed_kmh'          => $speedKmh,
             'intervalo_aplicado' => $intervalo,
             'motivo'             => $motivo,

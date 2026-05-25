@@ -13,22 +13,34 @@ class LocationHistory extends Model
     protected $table = 'location_histories';
 
     protected $fillable = [
-        'device_id', 
-        'latitude', 
-        'longitude', 
-        'location',      // PostGIS Geography
-        'accuracy',      // Precisión del GPS en metros
-        'bearing',       // Dirección/Orientación física (0-359.99)
-        'captured_at',   // Hora real generada en el teléfono
-        'battery_level', 
-        'is_charging',    // Capturado en la migración de detalles
-        'connection_type', // Capturado en la migración de detalles
-        'activity',
+        'device_id',
+        'latitude',
+        'longitude',
+        'location',           // PostGIS Geography
+        'accuracy',           // Precisión del GPS en metros
+        'altitude',           // Altitud en metros (GPS)
+        'speed',              // Velocidad cruda original en m/s
+        'smoothed_speed',     // Velocidad suavizada en m/s (clasificador móvil)
+        'bearing',            // Dirección/Orientación física (0-359.99)
+        'battery_level',
+        'is_charging',
+        'connection_type',
+        'activity',           // tracking_state mapeado a activity
         'movement_type',
         'screen_active',
+        'signal_strength',
+        'has_internet',
+        'tracking_state',     // Estado de rastreo original enviado por el móvil
+        'zone_name',          // Nombre de la zona segura activa
+        'is_safe_zone',       // true si estaba en zona segura
         'speed_kmh',
         'intervalo_aplicado',
-        'motivo'
+        'motivo',
+        'captured_at',        // Hora real generada en el teléfono
+        'raw_latitude',       // Coordenada cruda antes del filtrado espacial
+        'raw_longitude',      // Coordenada cruda antes del filtrado espacial
+        'confidence_score',   // Confianza del filtro espacial (0-100)
+        'is_outlier',         // true si el frame fue clasificado como outlier
     ];
 
     /**
@@ -36,17 +48,24 @@ class LocationHistory extends Model
      * Crucial para que las gráficas de batería y mapas en la web reciban datos limpios.
      */
     protected $casts = [
-        'is_charging' => 'boolean',
-        'screen_active' => 'boolean',
-        'latitude'    => 'double',
-        'longitude'   => 'double',
-        'accuracy'    => 'double',
-        'bearing'     => 'double',
-        'battery_level' => 'integer',
-        'speed_kmh'   => 'double',
+        'is_charging'      => 'boolean',
+        'screen_active'    => 'boolean',
+        'has_internet'     => 'boolean',
+        'is_safe_zone'     => 'boolean',
+        'is_outlier'       => 'boolean',
+        'latitude'         => 'double',
+        'longitude'        => 'double',
+        'accuracy'         => 'double',
+        'altitude'         => 'double',
+        'speed'            => 'double',
+        'smoothed_speed'   => 'double',
+        'bearing'          => 'double',
+        'battery_level'    => 'integer',
+        'speed_kmh'        => 'double',
         'intervalo_aplicado' => 'integer',
-        'captured_at' => 'datetime',
-        'created_at'  => 'datetime',
+        'confidence_score' => 'integer',
+        'captured_at'      => 'datetime',
+        'created_at'       => 'datetime',
     ];
 
     /**
