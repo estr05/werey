@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Spatial Intelligence Core Dashboard</title>
+<!-- Google Fonts & Material Symbols -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Config from Brand Anchors -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-highest": "#333539",
+                    "surface-bright": "#37393e",
+                    "surface-container-high": "#282a2e",
+                    "on-tertiary-fixed-variant": "#434750",
+                    "on-primary-fixed": "#002022",
+                    "surface-tint": "#00dbe9",
+                    "primary-container": "#00f0ff",
+                    "on-primary": "#00363a",
+                    "on-surface-variant": "#b9cacb",
+                    "error-container": "#93000a",
+                    "tertiary-fixed": "#dfe2ee",
+                    "secondary-container": "#3c475a",
+                    "on-secondary-fixed": "#111c2c",
+                    "on-tertiary-container": "#5b5f68",
+                    "outline-variant": "#3b494b",
+                    "secondary-fixed": "#d8e3fa",
+                    "on-secondary-container": "#aab6cc",
+                    "on-secondary": "#263142",
+                    "tertiary-container": "#d6d9e4",
+                    "on-primary-container": "#006970",
+                    "secondary-fixed-dim": "#bcc7dd",
+                    "surface-container-lowest": "#0c0e12",
+                    "secondary": "#bcc7dd",
+                    "inverse-primary": "#006970",
+                    "on-secondary-fixed-variant": "#3c475a",
+                    "surface-container": "#1e2024",
+                    "primary": "#dbfcff",
+                    "on-tertiary": "#2c3039",
+                    "surface-container-low": "#1a1c20",
+                    "surface": "#111318",
+                    "outline": "#849495",
+                    "tertiary": "#f4f5ff",
+                    "inverse-surface": "#e2e2e8",
+                    "on-surface": "#e2e2e8",
+                    "primary-fixed": "#7df4ff",
+                    "on-tertiary-fixed": "#181c24",
+                    "error": "#ffb4ab",
+                    "inverse-on-surface": "#2f3035",
+                    "on-error-container": "#ffdad6",
+                    "background": "#111318",
+                    "tertiary-fixed-dim": "#c3c6d1",
+                    "surface-variant": "#333539",
+                    "surface-dim": "#111318",
+                    "on-background": "#e2e2e8",
+                    "on-primary-fixed-variant": "#004f54",
+                    "primary-fixed-dim": "#00dbe9",
+                    "on-error": "#690005"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "16px",
+                    "stack-gap": "8px",
+                    "unit": "4px",
+                    "panel-padding": "20px",
+                    "margin-page": "24px"
+            },
+            "fontFamily": {
+                    "telemetry-data": [
+                            "JetBrains Mono"
+                    ],
+                    "label-caps": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "headline-lg-mobile": [
+                            "Inter"
+                    ],
+                    "display-lg": [
+                            "Inter"
+                    ],
+                    "headline-md": [
+                            "Inter"
+                    ]
+            },
+            "fontSize": {
+                    "telemetry-data": [
+                            "13px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.02em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "label-caps": [
+                            "11px",
+                            {
+                                    "lineHeight": "16px",
+                                    "letterSpacing": "0.08em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "20px",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "headline-lg-mobile": [
+                            "24px",
+                            {
+                                    "lineHeight": "32px",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-lg": [
+                            "32px",
+                            {
+                                    "lineHeight": "40px",
+                                    "letterSpacing": "-0.02em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "headline-md": [
+                            "20px",
+                            {
+                                    "lineHeight": "28px",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+          },
+        },
+      }
+    </script>
+<style>/* Base Styles to enforce HUD feel */
+body {
+    background-color: theme("colors.background");
+    color: theme("colors.on-background");
+    margin: 0;
+    overflow: hidden;
+    /* App-like feel, no global scroll */
+    }
+/* Glassmorphism Utilities */
+.glass-panel {
+    background: rgba(20, 24, 32, 0.6);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(188, 199, 221, 0.2);
+    /* slate at 20% */
+    /* Linear gradient border approximation for modern glass */
+    border-image: linear-gradient(to bottom right, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02)) 1;
+    /* Fallback border radius if border-image breaks it */
+    border-radius: theme("borderRadius.xl")
+    }
+/* Map Background Simulation */
+.map-bg {
+    background-image: url(https://lh3.googleusercontent.com/aida-public/AB6AXuAobDUOZKWImsGsZeMYYSHZ5CYG1dYu3uuxkQEZtZuP28Q8eWZRfoJV3fx6er8E7XVeOFHjbccv3zkCwBa8NDxuS3DICS9h51YNDTqJCyG7_jbSYQVxTLxIRRA1zsHRPcc_jHhcf23MUIHdF4E1Khxr2Wmqx_ebVDgbv2M3yCuc_XOHKS6Nc1sEtlkaawk87UH65LN-aL2ZYDap-dGVGNw-IZdinXyxZ9VqMhDoaq07ArivPnRZkSUuvf9vQ4-5hLnEB8hGCr3B);
+    /* Placeholder dark map */
+    background-size: cover;
+    background-position: center;
+    /* Darken the map heavily to match reference */
+    box-shadow: inset 0 0 0 2000px rgba(17, 19, 24, 0.85)
+    }
+/* Pulse Animation for Live Status */
+@keyframes pulse-cyan {
+    0% {
+        box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4);
+        } 70% {
+        box-shadow: 0 0 0 6px rgba(0, 240, 255, 0);
+        } 100% {
+        box-shadow: 0 0 0 0 rgba(0, 240, 255, 0);
+        }
+    }
+.animate-pulse-cyan {
+    animation: pulse-cyan 2s infinite
+    }
+/* Trajectory Path SVG Overlay */
+.trajectory-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 10
+    }
+/* Hide scrollbars for internal panel scrolling */
+::-webkit-scrollbar {
+    width: 4px
+    }
+::-webkit-scrollbar-track {
+    background: transparent
+    }
+::-webkit-scrollbar-thumb {
+    background: theme("colors.surface-variant");
+    border-radius: 4px
+    }</style>
+</head>
+<body class="map-bg relative h-screen w-screen font-body-md" data-location="Chicago">
+<!-- Background Trajectory SVG (Decorative to match reference) -->
+<svg class="trajectory-svg" preserveaspectratio="xMidYMid slice" viewbox="0 0 1920 1080">
+<path d="M 200 600 Q 500 700, 800 450 T 1300 500" fill="none" filter="blur(4px)" stroke="rgba(0, 240, 255, 0.6)" stroke-linecap="round" stroke-width="12" style="opacity: 0.5;"></path>
+<path d="M 200 600 Q 500 700, 800 450 T 1300 500" fill="none" stroke="rgba(219, 252, 255, 0.8)" stroke-linecap="round" stroke-width="4"></path>
+<!-- Live Indicator Point -->
+<circle class="animate-pulse-cyan" cx="1300" cy="500" fill="#fff" r="8"></circle>
+<circle cx="1300" cy="500" fill="rgba(0, 240, 255, 0.2)" r="40"></circle>
+<!-- Directional Arrow -->
+<polygon fill="#fff" points="1270,510 1290,500 1270,490" transform="rotate(-15 1280 500)"></polygon>
+</svg>
+<!-- TopAppBar (Shared Component) -->
+<header class="bg-surface/60 backdrop-blur-xl dark:bg-surface/60 flex justify-between items-center w-full px-margin-page py-unit h-14 z-50 border-b border-outline-variant/20 docked full-width top-0 absolute">
+<div class="flex items-center gap-4">
+<button class="text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 p-2 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">menu</span>
+</button>
+<h1 class="font-headline-md text-headline-md font-bold text-on-surface dark:text-on-surface tracking-tight">Spatial Intelligence Core Dashboard</h1>
+</div>
+<nav class="hidden md:flex items-center gap-6 h-full">
+<a class="font-label-caps text-label-caps text-primary border-b-2 border-primary pb-1 h-full flex items-center mt-[2px] active:scale-95 transition-transform" href="#">Dashboard</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-bright/10 px-2 py-1 rounded h-full flex items-center mt-[2px]" href="#">Live Map</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-bright/10 px-2 py-1 rounded h-full flex items-center mt-[2px]" href="#">Analysis</a>
+<a class="font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors hover:bg-surface-bright/10 px-2 py-1 rounded h-full flex items-center mt-[2px]" href="#">Settings</a>
+</nav>
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 p-2 rounded-full transition-colors flex items-center justify-center">
+<span class="material-symbols-outlined">sync</span>
+</button>
+<button class="text-on-surface-variant hover:text-on-surface hover:bg-surface-bright/10 p-2 rounded-full transition-colors flex items-center justify-center relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary-fixed-dim rounded-full"></span>
+</button>
+<div class="w-8 h-8 rounded-full bg-surface-container-high border border-outline-variant/30 flex items-center justify-center ml-2 overflow-hidden">
+<span class="material-symbols-outlined text-on-surface-variant text-sm">person</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="absolute top-14 left-0 w-full h-[calc(100vh-56px)] flex justify-between p-margin-page pointer-events-none z-20">
+<!-- Left Panel: Node Intelligence (Adapted from SideNavBar aesthetic) -->
+<aside class="glass-panel w-72 h-[calc(100vh-160px)] p-panel-padding flex flex-col gap-gutter pointer-events-auto shadow-2xl relative overflow-hidden rounded-xl border border-outline-variant/20">
+<!-- Header -->
+<div class="border-b border-outline-variant/20 pb-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant mb-1">OPERATIONAL AWARENESS</h2>
+</div>
+<!-- Telemetry List -->
+<div class="flex flex-col gap-3 flex-grow overflow-y-auto pr-2">
+<!-- Active Node -->
+<div class="bg-surface-container/40 border border-outline-variant/30 rounded-lg p-3 flex items-center gap-3 hover:bg-surface-variant/20 transition-colors cursor-pointer relative overflow-hidden">
+<div class="w-1 bg-primary absolute left-0 top-0 bottom-0"></div>
+<div class="w-8 h-8 rounded bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+<span class="material-symbols-outlined text-lg">moving</span>
+</div>
+<div class="flex-grow">
+<div class="flex justify-between items-baseline">
+<span class="font-label-caps text-label-caps text-primary font-bold">MOVING</span>
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant text-[10px]">45km/h</span>
+</div>
+<div class="w-full bg-surface-container-high h-1 mt-2 rounded-full overflow-hidden">
+<div class="bg-primary h-full w-[80%] rounded-full shadow-[0_0_8px_rgba(0,240,255,0.6)]"></div>
+</div>
+</div>
+</div>
+<!-- Signal Status -->
+<div class="bg-surface-container/20 border border-outline-variant/20 rounded-lg p-3 flex items-center gap-3 hover:bg-surface-variant/20 transition-colors cursor-pointer">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">signal_cellular_alt</span>
+</div>
+<div class="flex-grow">
+<span class="font-label-caps text-label-caps text-on-surface">SIGNAL: STRONG</span>
+</div>
+</div>
+<!-- Battery Status -->
+<div class="bg-surface-container/20 border border-outline-variant/20 rounded-lg p-3 flex items-center gap-3 hover:bg-surface-variant/20 transition-colors cursor-pointer">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-lg">battery_charging_full</span>
+</div>
+<div class="flex-grow flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">BATTERY: 82%</span>
+</div>
+</div>
+<!-- Sync Status -->
+<div class="bg-surface-container/20 border border-outline-variant/20 rounded-lg p-3 flex items-center gap-3 hover:bg-surface-variant/20 transition-colors cursor-pointer">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-on-surface-variant">
+<span class="material-symbols-outlined text-lg text-primary">sync</span>
+</div>
+<div class="flex-grow flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">SYNC: LIVE</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Right Panel: Trajectory Analysis -->
+<aside class="glass-panel w-80 h-[calc(100vh-160px)] p-panel-padding flex flex-col gap-6 pointer-events-auto shadow-2xl relative overflow-hidden rounded-xl border border-outline-variant/20">
+<!-- Section 1: Trajectory Log -->
+<div class="flex-grow flex flex-col">
+<div class="border-b border-outline-variant/20 pb-2 mb-4">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">TRAJECTORY ANALYSIS</h2>
+</div>
+<div class="relative flex-grow">
+<!-- Vertical Line -->
+<div class="absolute left-[54px] top-4 bottom-8 w-px bg-outline-variant/30"></div>
+<div class="flex flex-col gap-6 relative z-10 pt-2">
+<!-- Node 1 -->
+<div class="flex items-start gap-4">
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant w-10 text-right mt-[2px] text-[11px]">10:15 AM</span>
+<div class="w-3 h-3 rounded-full bg-primary mt-1 shadow-[0_0_8px_rgba(0,240,255,0.4)]"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface">Cluster A (Urban)</span>
+</div>
+</div>
+<!-- Node 2 -->
+<div class="flex items-start gap-4">
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant w-10 text-right mt-[2px] text-[11px]">10:25 AM</span>
+<div class="w-3 h-3 rounded-full bg-primary mt-1"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface">Cluster B</span>
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant text-[10px]">(Highway)</span>
+</div>
+</div>
+<!-- Node 3 -->
+<div class="flex items-start gap-4">
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant w-10 text-right mt-[2px] text-[11px]">10:40 AM</span>
+<div class="w-3 h-3 rounded-full bg-primary mt-1"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface">Cluster C (Industrial)</span>
+</div>
+</div>
+<!-- Node 4 (Faded) -->
+<div class="flex items-start gap-4 opacity-50">
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant w-10 text-right mt-[2px] text-[11px]">10:55 AM</span>
+<div class="w-3 h-3 rounded-full bg-on-surface-variant mt-1"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface">Cluster C</span>
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant text-[10px]">(Industrial)</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 2: Confidence Score (Bento Style) -->
+<div class="bg-surface-container/30 border border-outline-variant/20 rounded-lg p-4 flex flex-col gap-4">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant">CONFIDENCE SCORE</h3>
+<div class="flex items-center gap-4">
+<!-- Circular Progress Approximation -->
+<div class="relative w-16 h-16 rounded-full border-4 border-surface-container flex items-center justify-center">
+<div class="absolute inset-0 rounded-full border-4 border-primary border-t-transparent border-r-transparent transform -rotate-45 shadow-[0_0_12px_rgba(0,240,255,0.2)]"></div>
+<span class="font-telemetry-data text-telemetry-data text-on-surface text-lg">94%</span>
+</div>
+<div class="bg-primary/10 border border-primary/30 px-3 py-1 rounded text-primary font-label-caps text-label-caps">
+                        HIGH
+                    </div>
+</div>
+</div>
+</aside>
+</main>
+<!-- BottomNavBar (Shared Component) - Modified for Scrubber context -->
+<nav class="bg-surface-container-high/80 backdrop-blur-2xl dark:bg-surface-container-high/80 rounded-xl mx-margin-page mb-margin-page h-20 shadow-2xl border border-outline-variant/30 fixed bottom-0 left-0 right-0 z-50 flex items-center justify-between px-panel-padding hover:bg-surface-bright/20 transition-all pointer-events-auto">
+<!-- Scrubber -->
+<div class="flex-grow flex items-center gap-4 mr-8">
+<span class="font-telemetry-data text-telemetry-data text-on-surface-variant text-[11px]">09:00</span>
+<div class="relative flex-grow h-2 bg-surface-container rounded-full overflow-hidden cursor-pointer">
+<div class="absolute top-0 left-0 h-full w-[65%] bg-primary rounded-full shadow-[0_0_8px_rgba(0,240,255,0.5)]"></div>
+<!-- Timeline Markers -->
+<div class="absolute top-0 left-[20%] h-full w-1 bg-surface-bright"></div>
+<div class="absolute top-0 left-[45%] h-full w-1 bg-surface-bright"></div>
+</div>
+<span class="font-telemetry-data text-telemetry-data text-primary text-[11px]">10:45 (LIVE)</span>
+</div>
+<!-- Controls -->
+<div class="flex items-center gap-2">
+<!-- Inactive -->
+<button class="text-on-surface-variant hover:text-on-surface px-4 py-2 flex flex-col items-center gap-1 active:scale-95 transition-all">
+<span class="material-symbols-outlined">play_arrow</span>
+<span class="font-label-caps text-label-caps hidden md:block">Play</span>
+</button>
+<!-- Active -->
+<button class="bg-primary text-on-primary rounded-lg px-4 py-2 flex flex-col items-center gap-1 active:scale-95 transition-all shadow-[0_0_12px_rgba(0,240,255,0.3)]">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">pause</span>
+<span class="font-label-caps text-label-caps hidden md:block">Pause</span>
+</button>
+<div class="w-px h-8 bg-outline-variant/30 mx-2"></div>
+<!-- Speeds -->
+<button class="text-on-surface-variant hover:text-on-surface px-3 py-2 font-telemetry-data text-telemetry-data">1x</button>
+<button class="text-on-surface-variant hover:text-on-surface px-3 py-2 font-telemetry-data text-telemetry-data">2x</button>
+<button class="text-on-surface-variant hover:text-on-surface px-3 py-2 font-telemetry-data text-telemetry-data">4x</button>
+</div>
+</nav>
+</body></html>
