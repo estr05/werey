@@ -252,7 +252,7 @@
                                 </button>
                             </div>
                             
-                            <form action="{{ route('safe-place.store', $device->id) }}" method="POST" class="space-y-4">
+                            <form action="{{ route('safe-place.store', $device) }}" method="POST" class="space-y-4">
                                 @csrf
                                 <input type="hidden" name="latitude" id="form-lat">
                                 <input type="hidden" name="longitude" id="form-lng">
@@ -455,6 +455,41 @@
             return (R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))) / tDiff > 200;
         }
 
+        // ── Interpolación Catmull-Rom Spline ──
+        // Genera una curva suave que pasa exactamente por todos los puntos GPS.
+        // Alpha controla la "tensión": 0.5 = Centripetal (más natural), 0 = Uniforme, 1 = Cord Length.
+        function catmullRomSpline(points, samplesPerSegment) {
+            if (points.length < 2) return points;
+            samplesPerSegment = samplesPerSegment || 12;
+
+            // Duplicar primer y último punto para que la curva empiece y termine exactamente en ellos
+            var pts = [points[0]].concat(points).concat([points[points.length - 1]]);
+
+            var result = [];
+            for (var i = 1; i < pts.length - 2; i++) {
+                var p0 = pts[i - 1], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2];
+                for (var t = 0; t <= 1; t += 1 / samplesPerSegment) {
+                    var t2 = t * t;
+                    var t3 = t2 * t;
+                    // Fórmula Catmull-Rom (alpha = 0.5)
+                    var lat =
+                        0.5 * ((2 * p1[0]) +
+                               (-p0[0] + p2[0]) * t +
+                               (2*p0[0] - 5*p1[0] + 4*p2[0] - p3[0]) * t2 +
+                               (-p0[0] + 3*p1[0] - 3*p2[0] + p3[0]) * t3);
+                    var lng =
+                        0.5 * ((2 * p1[1]) +
+                               (-p0[1] + p2[1]) * t +
+                               (2*p0[1] - 5*p1[1] + 4*p2[1] - p3[1]) * t2 +
+                               (-p0[1] + 3*p1[1] - 3*p2[1] + p3[1]) * t3);
+                    result.push([lat, lng]);
+                }
+            }
+            // Aseguramos que el último punto esté incluido
+            result.push(points[points.length - 1]);
+            return result;
+        }
+
         // ── Renderiza las polylines de la ruta sobre el mapa ──
         function renderRoute(points) {
             var sorted = [...points].sort(function(a, b) {
@@ -500,19 +535,10 @@
             segs.forEach(function (seg, index) {
                 var style = routeStyles[seg.type] || routeStyles['DEFAULT'];
                 var raw   = seg.points.map(function (p) { return [p.lat, p.lng]; });
-                var pts   = raw;
 
-                // Suavizado para VEHICLE
-                if (seg.type === 'VEHICLE' && raw.length >= 3) {
-                    pts = [raw[0]];
-                    for (var i = 1; i < raw.length - 1; i++) {
-                        pts.push([
-                            (raw[i-1][0] + raw[i][0]*2 + raw[i+1][0]) / 4,
-                            (raw[i-1][1] + raw[i][1]*2 + raw[i+1][1]) / 4,
-                        ]);
-                    }
-                    pts.push(raw[raw.length - 1]);
-                }
+                // Catmull-Rom Spline: suavizar todas las rutas (más muestras en vehículos)
+                var samples = seg.type === 'VEHICLE' ? 16 : (seg.type === 'RUNNING' ? 10 : 8);
+                var pts = raw.length >= 2 ? catmullRomSpline(raw, samples) : raw;
 
                 if (pts.length > 1) {
                     var pl = L.polyline(pts, { ...style, origType: seg.type }).addTo(map);
@@ -570,17 +596,40 @@
                     bounds.extend(pts[0]);
                 }
 
-                // Dibujar línea punteada gris si hubo un Gap/Desconexión
+                // Dibujar marcadores de Gap/Desconexión en lugar de la línea recta
                 if (seg.isGapBefore && index > 0 && seg.points.length > 0) {
                     var prevSeg = segs[index - 1];
                     if (prevSeg.points.length > 0) {
                         var p1 = prevSeg.points[prevSeg.points.length - 1];
                         var p2 = seg.points[0];
-                        var gapPl = L.polyline([[p1.lat, p1.lng], [p2.lat, p2.lng]], {
-                            color: '#475569', weight: 3, dashArray: '4, 8', opacity: 0.6, lineJoin: 'round'
+                        
+                        // Marcador 1: Señal Perdida (Último punto conocido)
+                        var m1 = L.marker([p1.lat, p1.lng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="background:rgba(239,68,68,0.25); border:1.5px solid #ef4444; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#ef4444; box-shadow:0 0 8px rgba(239,68,68,0.4);">
+                                    <span class="material-symbols-outlined" style="font-size:12px; font-weight:bold;">wifi_off</span>
+                                </div>`,
+                                iconSize: [20, 20],
+                                iconAnchor: [10, 10]
+                            })
                         }).addTo(map);
-                        gapPl.bindTooltip("Pérdida de Señal / Offline", {className: 'text-xs font-mono font-bold text-slate-400 bg-[#131416] border-slate-700'});
-                        activeRouteLayers.push(gapPl);
+                        m1.bindTooltip("Señal Perdida: " + (p1.label_time || ''), {className: 'text-xs text-red-400 bg-slate-950 border-red-500/30 font-bold font-sans'});
+                        activeRouteLayers.push(m1);
+
+                        // Marcador 2: Conexión Restaurada (Nuevo punto)
+                        var m2 = L.marker([p2.lat, p2.lng], {
+                            icon: L.divIcon({
+                                className: '',
+                                html: `<div style="background:rgba(16,185,129,0.25); border:1.5px solid #10b981; border-radius:50%; width:20px; height:20px; display:flex; align-items:center; justify-content:center; color:#10b981; box-shadow:0 0 8px rgba(16,185,129,0.4);">
+                                    <span class="material-symbols-outlined" style="font-size:12px; font-weight:bold;">sensors</span>
+                                </div>`,
+                                iconSize: [20, 20],
+                                iconAnchor: [10, 10]
+                            })
+                        }).addTo(map);
+                        m2.bindTooltip("Señal Recuperada: " + (p2.label_time || ''), {className: 'text-xs text-emerald-400 bg-slate-950 border-emerald-500/30 font-bold font-sans'});
+                        activeRouteLayers.push(m2);
                     }
                 }
             });
@@ -792,7 +841,7 @@
             clearMapHistory();
 
             try {
-                var res = await fetch('{{ route("device.history", $device->id) }}?date=' + encodeURIComponent(date));
+                var res = await fetch('{{ route("device.history", $device) }}?date=' + encodeURIComponent(date));
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 var json = await res.json();
 
@@ -1149,7 +1198,7 @@
                 sseInstance.close();
             }
 
-            sseInstance = new EventSource('{{ route("device.sse", $device->id) }}');
+            sseInstance = new EventSource('{{ route("device.sse", $device) }}');
 
             sseInstance.addEventListener('position', function (e) {
                 try {

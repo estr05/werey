@@ -113,7 +113,7 @@
                         <span class="material-symbols-outlined text-3xl text-slate-600">pending</span>
                         <p class="text-xs text-slate-500 leading-relaxed">
                             Abre la app móvil e ingresa el código<br>
-                            <span class="font-mono text-amber-400 font-bold">{{ $device->identifier }}</span><br>
+                            <span class="font-mono text-amber-400 font-bold">{{ $device->pairing_code }}</span><br>
                             para activar el dispositivo.
                         </p>
                     </div>
@@ -221,7 +221,7 @@
 
                 <div class="mt-auto flex items-center gap-3">
                     @if(!$isPending)
-                        <a href="{{ route('device.show', $device->id) }}"
+                        <a href="{{ route('device.show', $device) }}"
                            class="btn-manage flex-1 bg-[#005d70] text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">
                             Manage Node
                         </a>
@@ -231,7 +231,7 @@
                         </span>
                     @endif
                     
-                    <form action="{{ route('device.destroy', $device->id) }}" method="POST"
+                    <form action="{{ route('device.destroy', $device) }}" method="POST"
                           onsubmit="return confirm('¿Confirmas la desconexión total del nodo {{ $device->alias }}?')">
                         @csrf
                         @method('DELETE')
@@ -473,7 +473,7 @@
                         <span class="material-symbols-outlined text-3xl text-slate-600">pending</span>
                         <p class="text-xs text-slate-500 leading-relaxed">
                             Abre la app móvil e ingresa el código<br>
-                            <span class="font-mono text-amber-400 font-bold">${device.identifier}</span><br>
+                            <span class="font-mono text-amber-400 font-bold">${device.pairing_code}</span><br>
                             para activar el dispositivo.
                         </p>
                     </div>

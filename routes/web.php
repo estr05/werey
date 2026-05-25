@@ -25,19 +25,19 @@ Route::middleware('auth')->group(function () {
     // Endpoint SSE para actualizaciones en tiempo real (reemplaza el polling)
     Route::get('/dashboard/sse', [DashboardController::class, 'sseStream'])->name('dashboard.sse');
     
-    Route::get('/device/{id}', [DashboardController::class, 'show'])->name('device.show');
-    Route::delete('/device/{id}', [DashboardController::class, 'destroy'])->name('device.destroy');
+    Route::get('/device/{device}', [DashboardController::class, 'show'])->name('device.show');
+    Route::delete('/device/{device}', [DashboardController::class, 'destroy'])->name('device.destroy');
     
     // Crear nuevo teléfono vinculado (máx. 3 por usuario)
     Route::post('/device', [DashboardController::class, 'storeDevice'])->name('device.store');
     
     // Rutas para Puntos/Zonas Seguras
-    Route::post('/device/{id}/safe-place', [DashboardController::class, 'storeSafePlace'])->name('safe-place.store');
+    Route::post('/device/{device}/safe-place', [DashboardController::class, 'storeSafePlace'])->name('safe-place.store');
     Route::delete('/safe-place/{id}', [DashboardController::class, 'destroySafePlace'])->name('safe-place.destroy');
 
     // T4 — Historial GPS paginado por fecha (JSON, autenticado via sesión web)
-    Route::get('/device/{id}/history', [DashboardController::class, 'historyJson'])->name('device.history');
+    Route::get('/device/{device}/history', [DashboardController::class, 'historyJson'])->name('device.history');
 
     // T7-backend — SSE de posición en tiempo real para la vista del dispositivo
-    Route::get('/device/{id}/sse', [DashboardController::class, 'deviceSseStream'])->name('device.sse');
+    Route::get('/device/{device}/sse', [DashboardController::class, 'deviceSseStream'])->name('device.sse');
 });

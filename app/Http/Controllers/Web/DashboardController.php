@@ -47,8 +47,8 @@ class DashboardController extends Controller
             'identifier' => ['required', 'string', 'max:255'],
         ]);
 
-        // Verificar si el identificador ya existe en la base de datos
-        $existing = Device::where('identifier', $request->identifier)->first();
+        // Verificar si el código de emparejamiento ya existe y está activo
+        $existing = Device::where('pairing_code', $request->identifier)->first();
 
         if ($existing) {
             if ($existing->user_id === $user->id) {
@@ -63,29 +63,39 @@ class DashboardController extends Controller
         }
 
         // Crear dispositivo SIN datos mock — en espera de primera telemetría real
+        // Generar el código como pairing_code, el identifier lo hacemos permanente
+        $pairingCode = $request->identifier; // El frontend envía WRY-XXXX-XXXX
+        
         $user->devices()->create([
-            'alias'      => $request->alias,
-            'identifier' => $request->identifier,
+            'alias'              => $request->alias,
+            'identifier'         => \Illuminate\Support\Str::uuid(), // ID interno permanente (Route Key)
+            'pairing_code'       => $pairingCode,
+            'pairing_status'     => 'pending',
+            'pairing_expires_at' => now()->addMinutes(15),
         ]);
 
-        return redirect()->route('dashboard')->with('success', '¡Dispositivo registrado! Esperando vinculación desde la app móvil.');
+        return redirect()->route('dashboard')->with('success', '¡Dispositivo registrado! Esperando vinculación desde la app móvil con el código generado.');
     }
 
-    public function show(Request $request, $id)
+    public function show(Request $request, Device $device)
     {
-        $user = Auth::user();
-        
-        // Buscamos el dispositivo del usuario logueado
-        $device = $user->devices()->findOrFail($id);
+        if ($device->user_id !== Auth::id()) {
+            abort(403, 'No autorizado.');
+        }
 
         // Buscar fecha seleccionada o usar la del último registro
-        $lastPoint = $device->locationHistories()->latest()->first();
-        $defaultDate = $lastPoint ? $lastPoint->created_at->toDateString() : now()->toDateString();
+        $lastPoint = $device->locationHistories()->orderBy('captured_at', 'desc')->first();
+        $defaultDate = ($lastPoint && $lastPoint->captured_at) 
+            ? $lastPoint->captured_at->toDateString() 
+            : ($lastPoint ? $lastPoint->created_at->toDateString() : now()->toDateString());
         $selectedDate = $request->query('date', $defaultDate);
 
         // El historial se carga por API JSON en T5 para el mapa,
         // pero la vista Blade todavía usa $locationHistories para mostrar la lista de 'Movimientos de Hoy'
-        $locationHistories = $device->locationHistories()->whereDate('created_at', $selectedDate)->get();
+        $locationHistories = $device->locationHistories()
+            ->whereDate('captured_at', $selectedDate)
+            ->orderBy('captured_at', 'asc')
+            ->get();
 
 
         $safePlaces = $device->safePlaces;
@@ -118,7 +128,7 @@ class DashboardController extends Controller
         }
 
         $availableDates = $device->locationHistories()
-            ->selectRaw('DATE(created_at) as date')
+            ->selectRaw('DATE(COALESCE(captured_at, created_at)) as date')
             ->groupBy('date')
             ->orderBy('date', 'desc')
             ->pluck('date');
@@ -134,19 +144,21 @@ class DashboardController extends Controller
         ));
     }
 
-    public function destroy($id)
+    public function destroy(Device $device)
     {
-        $user = Auth::user();
-        $device = $user->devices()->findOrFail($id);
+        if ($device->user_id !== Auth::id()) {
+            abort(403, 'No autorizado.');
+        }
         $device->delete(); // Cascada en DB eliminará historial y lugares seguros
 
         return redirect()->route('dashboard')->with('success', 'Dispositivo desvinculado.');
     }
 
-    public function storeSafePlace(Request $request, $id)
+    public function storeSafePlace(Request $request, Device $device)
     {
-        $user = Auth::user();
-        $device = $user->devices()->findOrFail($id);
+        if ($device->user_id !== Auth::id()) {
+            abort(403, 'No autorizado.');
+        }
 
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -162,7 +174,7 @@ class DashboardController extends Controller
             'radius_meters' => $request->radius_meters,
         ]);
 
-        return redirect()->route('device.show', $device->id)->with('success', 'Punto seguro agregado correctamente.');
+        return redirect()->route('device.show', $device)->with('success', 'Punto seguro agregado correctamente.');
     }
 
     public function destroySafePlace($id)
@@ -174,7 +186,7 @@ class DashboardController extends Controller
 
         $safePlace->delete();
 
-        return redirect()->route('device.show', $device->id)->with('success', 'Punto seguro eliminado.');
+        return redirect()->route('device.show', $device)->with('success', 'Punto seguro eliminado.');
     }
 
     /**
@@ -183,16 +195,18 @@ class DashboardController extends Controller
      * Protegido por sesión web (guard 'auth') — el browser envía la cookie automáticamente.
      * GET /device/{id}/history?date=YYYY-MM-DD
      */
-    public function historyJson(Request $request, $id): JsonResponse
+    public function historyJson(Request $request, Device $device): JsonResponse
     {
-        $device = Auth::user()->devices()->findOrFail($id);
+        if ($device->user_id !== Auth::id()) {
+            abort(403, 'No autorizado.');
+        }
 
         $date  = $request->query('date', now()->toDateString());
         $limit = min((int) $request->query('limit', 500), 1000);
 
         $points = $device->locationHistories()
-            ->whereDate('created_at', $date)
-            ->orderBy('created_at', 'asc')
+            ->whereDate('captured_at', $date)
+            ->orderBy('captured_at', 'asc')
             ->limit($limit)
             ->get([
                 'latitude', 'longitude', 'activity', 'movement_type',
@@ -248,7 +262,9 @@ class DashboardController extends Controller
                 'id'               => $device->id,
                 'alias'            => $device->alias,
                 'identifier'       => $device->identifier,
-                'is_pending'       => $isPending,
+                'pairing_code'     => $device->pairing_code,
+                'pairing_status'   => $device->pairing_status,
+                'is_pending'       => $device->pairing_status === 'pending',
                 'activity'         => $device->activity ?? 'unknown',
                 'battery_level'    => $device->battery_level,
                 'is_charging'      => $device->is_charging,
@@ -264,8 +280,8 @@ class DashboardController extends Controller
                 'last_seen_raw'    => $device->last_seen?->toIso8601String(),
                 'latitude'         => $device->latitude,
                 'longitude'        => $device->longitude,
-                'show_url'         => route('device.show', $device->id),
-                'delete_url'       => route('device.destroy', $device->id),
+                'show_url'         => route('device.show', $device),
+                'delete_url'       => route('device.destroy', $device),
             ];
         });
 
@@ -319,7 +335,9 @@ class DashboardController extends Controller
                         'id'               => $device->id,
                         'alias'            => $device->alias,
                         'identifier'       => $device->identifier,
-                        'is_pending'       => $isPending,
+                        'pairing_code'     => $device->pairing_code,
+                        'pairing_status'   => $device->pairing_status,
+                        'is_pending'       => $device->pairing_status === 'pending',
                         'activity'         => $device->activity ?? 'unknown',
                         'battery_level'    => $device->battery_level,
                         'is_charging'      => $device->is_charging,
@@ -335,8 +353,8 @@ class DashboardController extends Controller
                         'last_seen_raw'    => $device->last_seen?->toIso8601String(),
                         'latitude'         => $device->latitude,
                         'longitude'        => $device->longitude,
-                        'show_url'         => route('device.show', $device->id),
-                        'delete_url'       => route('device.destroy', $device->id),
+                        'show_url'         => route('device.show', $device),
+                        'delete_url'       => route('device.destroy', $device),
                     ];
                 });
 
@@ -380,9 +398,11 @@ class DashboardController extends Controller
      * Emite evento 'position' cuando lat/lng cambia, 'heartbeat' cuando no hay cambios.
      * GET /device/{id}/sse
      */
-    public function deviceSseStream(Request $request, $id): StreamedResponse
+    public function deviceSseStream(Request $request, Device $device): StreamedResponse
     {
-        $device = Auth::user()->devices()->findOrFail($id);
+        if ($device->user_id !== Auth::id()) {
+            abort(403, 'No autorizado.');
+        }
         session_write_close();
 
         $response = new StreamedResponse(function () use ($device) {

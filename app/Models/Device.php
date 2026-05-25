@@ -15,6 +15,14 @@ class Device extends Model
         'user_id',
         'alias',
         'identifier',
+        'pairing_code',
+        'pairing_status',
+        'pairing_expires_at',
+        'device_uuid',
+        'device_manufacturer',
+        'device_model',
+        'os_version',
+        'app_version',
         'latitude',
         'longitude',
         'location',          // PostGIS Geography
@@ -82,6 +90,14 @@ class Device extends Model
     }
 
     /**
+     * Relación: Un dispositivo tiene muchos eventos de emparejamiento.
+     */
+    public function pairingEvents(): HasMany
+    {
+        return $this->hasMany(DevicePairingEvent::class);
+    }
+
+    /**
      * T8 - Máquina de Estados de Conexión.
      * Calcula dinámicamente si el dispositivo está vivo, en espera, con pérdida de señal o apagado,
      * basándose exclusivamente en el tiempo del último heartbeat (last_seen), NO en banderas booleanas estáticas.
@@ -103,5 +119,13 @@ class Device extends Model
         } else {
             return 'offline'; // Dispositivo apagado o desconectado a largo plazo
         }
+    }
+
+    /**
+     * Define el campo para Route Model Binding (usará 'identifier' en lugar de 'id').
+     */
+    public function getRouteKeyName(): string
+    {
+        return 'identifier';
     }
 }
