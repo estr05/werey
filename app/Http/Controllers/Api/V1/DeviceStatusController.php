@@ -127,4 +127,91 @@ class DeviceStatusController extends Controller
             ],
         ], 200);
     }
+
+    /**
+     * POST /api/v1/device-status/batch
+     *
+     * Recibe un lote (array) de frames de estado.
+     * Dado que actualmente no guardamos un histórico de estos estados,
+     * simplemente tomamos el más reciente y actualizamos el dispositivo.
+     */
+    public function storeBatch(Request $request): JsonResponse
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (! $token || ! str_contains($token->name, 'device_token:')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token de dispositivo no válido para estado del dispositivo.',
+            ], 403);
+        }
+
+        $deviceId = str_replace('device_token:', '', $token->name);
+        $device   = Device::where('user_id', $request->user()->id)->find($deviceId);
+
+        if (! $device) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dispositivo no encontrado o no autorizado.',
+            ], 404);
+        }
+
+        $frames = $request->input('frames', []);
+        if (!is_array($frames) || empty($frames)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El lote de frames está vacío o no es un arreglo.',
+            ], 400);
+        }
+
+        $latestFrame = null;
+        $latestCapturedAt = null;
+
+        foreach ($frames as $frame) {
+            $capturedAtStr = $frame['capturedAt'] ?? $frame['captured_at'] ?? now()->toIso8601String();
+            $capturedAtDate = \Carbon\Carbon::parse($capturedAtStr);
+
+            if ($latestCapturedAt === null || $capturedAtDate->greaterThan($latestCapturedAt)) {
+                $latestCapturedAt = $capturedAtDate;
+                $latestFrame = $frame;
+            }
+        }
+
+        if ($latestFrame !== null) {
+            $connectionType = strtolower(trim($latestFrame['connection_type'] ?? 'unknown'));
+            $connectionMap = [
+                'mobile' => 'cellular',
+                '4g'     => 'cellular',
+                '5g'     => 'cellular',
+                'lte'    => 'cellular',
+                'edge'   => 'cellular',
+                '3g'     => 'cellular',
+            ];
+            $normalizedType = $connectionMap[$connectionType] ?? $connectionType;
+
+            $device->update([
+                'battery_level'   => $latestFrame['battery_level'] ?? $device->battery_level,
+                'is_charging'     => $latestFrame['is_charging'] ?? $device->is_charging,
+                'connection_type' => $normalizedType,
+                'signal_strength' => $latestFrame['signal_strength'] ?? $device->signal_strength,
+                'has_internet'    => $latestFrame['has_internet'] ?? $device->has_internet,
+                'screen_active'   => $latestFrame['screen_active'] ?? $device->screen_active,
+                'tracking_state'  => $latestFrame['tracking_state'] ?? $device->tracking_state,
+                'activity_status' => $latestFrame['activity_status'] ?? $device->activity_status,
+                'last_status_at'  => $latestCapturedAt,
+                'last_seen'       => now(),
+            ]);
+        } else {
+            $device->update(['last_seen' => now()]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($frames) . ' frames de estado procesados correctamente.',
+            'data'    => [
+                'device_id' => $device->id,
+                'last_seen' => $device->last_seen,
+            ],
+        ], 200);
+    }
 }

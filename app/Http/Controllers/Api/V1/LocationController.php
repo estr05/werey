@@ -203,4 +203,178 @@ class LocationController extends Controller
             ],
         ], 200);
     }
+
+    /**
+     * POST /api/v1/location/batch
+     *
+     * Recibe un lote (array) de frames GPS.
+     */
+    public function storeBatch(Request $request): JsonResponse
+    {
+        $token = $request->user()->currentAccessToken();
+
+        if (! $token || ! str_contains($token->name, 'device_token:')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token de dispositivo no válido para transmisión de ubicación.',
+            ], 403);
+        }
+
+        $deviceId = str_replace('device_token:', '', $token->name);
+        $device   = Device::where('user_id', $request->user()->id)->find($deviceId);
+
+        if (! $device) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Dispositivo no encontrado o no autorizado.',
+            ], 404);
+        }
+
+        $frames = $request->input('frames', []);
+        if (!is_array($frames) || empty($frames)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'El lote de frames está vacío o no es un arreglo.',
+            ], 400);
+        }
+
+        $latestFrame = null;
+        $latestCapturedAt = null;
+
+        $helper = new TelemetryHelper();
+        $filter = new SpatialFilter();
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+
+        try {
+            foreach ($frames as $frame) {
+                $lat = $frame['latitude'] ?? null;
+                $lng = $frame['longitude'] ?? null;
+                if ($lat === null || $lng === null) continue;
+
+                $movementType = $frame['movementType'] ?? $frame['movement_type'] ?? 'STATIC';
+                $smoothedSpeed = $frame['smoothedSpeedMs'] ?? $frame['smoothedSpeed'] ?? $frame['smoothed_speed'] ?? null;
+                $speedMs = $frame['speedMs'] ?? $frame['speed'] ?? null;
+                $capturedAtStr = $frame['capturedAt'] ?? $frame['captured_at'] ?? $frame['created_at'] ?? now()->toIso8601String();
+                
+                $speedKmh = $helper->calculateSpeedKmh(
+                    $frame['speedKmh'] ?? $frame['speed_kmh'] ?? null,
+                    $smoothedSpeed,
+                    $speedMs
+                );
+
+                $isSafe = $frame['isInsideSafeZone'] ?? $frame['is_safe_zone'] ?? true;
+                $intervalo = $frame['intervaloAplicado'] ?? $frame['intervalo_aplicado'] ?? $helper->calculateInterval($speedKmh, $isSafe);
+                $motivo = $frame['motivo'] ?? $helper->calculateMotivo($speedKmh, $isSafe);
+                
+                $bearing = $helper->processBearing(
+                    $frame['bearing'] ?? null,
+                    $device->bearing,
+                    $speedKmh
+                );
+
+                $point = [
+                    'latitude' => $lat,
+                    'longitude' => $lng,
+                    'accuracy' => $frame['accuracy'] ?? null,
+                    'captured_at' => $capturedAtStr,
+                    'activity' => strtolower($movementType)
+                ];
+
+                $spatialData = $filter->process($device, $point);
+
+                if ($spatialData['is_outlier'] ?? false) {
+                    Log::info('[LocationBatch] Frame descartado por SpatialFilter', ['device_id' => $device->id]);
+                    continue;
+                }
+
+                $capturedAtDate = \Carbon\Carbon::parse($capturedAtStr);
+                $exists = LocationHistory::where('device_id', $device->id)
+                    ->where('captured_at', $capturedAtDate)
+                    ->exists();
+
+                if (!$exists) {
+                    $finalLat = (float) $spatialData['latitude'];
+                    $finalLng = (float) $spatialData['longitude'];
+
+                    LocationHistory::create([
+                        'device_id'          => $device->id,
+                        'latitude'           => $finalLat,
+                        'longitude'          => $finalLng,
+                        'raw_latitude'       => $spatialData['raw_latitude'] ?? $lat,
+                        'raw_longitude'      => $spatialData['raw_longitude'] ?? $lng,
+                        'confidence_score'   => $spatialData['confidence_score'] ?? 100,
+                        'is_outlier'         => $spatialData['is_outlier'] ?? false,
+                        'accuracy'           => $frame['accuracy'] ?? null,
+                        'altitude'           => $frame['altitude'] ?? null,
+                        'speed'              => $speedMs,
+                        'smoothed_speed'     => $smoothedSpeed,
+                        'bearing'            => $bearing,
+                        'battery_level'      => $device->battery_level,
+                        'is_charging'        => $device->is_charging,
+                        'connection_type'    => $device->connection_type,
+                        'signal_strength'    => $device->signal_strength,
+                        'has_internet'       => $device->has_internet,
+                        'activity'           => strtolower($movementType),
+                        'movement_type'      => $movementType,
+                        'tracking_state'     => $frame['trackingState'] ?? $frame['tracking_state'] ?? null,
+                        'screen_active'      => $device->screen_active,
+                        'is_safe_zone'       => $isSafe,
+                        'zone_name'          => $frame['activeZoneName'] ?? $frame['zone_name'] ?? null,
+                        'captured_at'        => $capturedAtDate,
+                        'speed_kmh'          => $speedKmh,
+                        'intervalo_aplicado' => $intervalo,
+                        'motivo'             => $motivo,
+                    ]);
+                }
+
+                if ($latestCapturedAt === null || $capturedAtDate->greaterThan($latestCapturedAt)) {
+                    $latestCapturedAt = $capturedAtDate;
+                    $latestFrame = [
+                        'latitude' => $spatialData['latitude'],
+                        'longitude' => $spatialData['longitude'],
+                        'activity' => strtolower($movementType),
+                        'speed_kmh' => $speedKmh,
+                        'intervalo_aplicado' => $intervalo,
+                        'motivo' => $motivo,
+                        'bearing' => $bearing,
+                    ];
+                }
+            }
+
+            if ($latestFrame !== null) {
+                $device->update([
+                    'latitude'           => $latestFrame['latitude'],
+                    'longitude'          => $latestFrame['longitude'],
+                    'activity'           => $latestFrame['activity'],
+                    'speed_kmh'          => $latestFrame['speed_kmh'],
+                    'intervalo_aplicado' => $latestFrame['intervalo_aplicado'],
+                    'motivo'             => $latestFrame['motivo'],
+                    'bearing'            => $latestFrame['bearing'],
+                    'last_seen'          => now(),
+                ]);
+            } else {
+                $device->update(['last_seen' => now()]);
+            }
+
+            \Illuminate\Support\Facades\DB::commit();
+
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            Log::error('[LocationBatch] Error al procesar batch: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Error al procesar el lote de ubicaciones.',
+            ], 500);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($frames) . ' frames de ubicación procesados correctamente.',
+            'data'    => [
+                'device_id' => $device->id,
+                'last_seen' => $device->last_seen,
+            ],
+        ], 200);
+    }
 }

@@ -3,36 +3,61 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Where are You? | Global Fleet Overview</title>
+    <title>Warey | Global Fleet Overview</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              primary: "#06b6d4", // Cyan 500
+              "background-light": "#f8fafc",
+              "background-dark": "#0a0c10",
+              "surface-dark": "#161b22",
+              "border-dark": "#30363d",
+            },
+            fontFamily: {
+              sans: ["Inter", "sans-serif"],
+              mono: ["JetBrains Mono", "monospace"],
+            },
+            borderRadius: {
+              DEFAULT: "0.5rem",
+            },
+          },
+        },
+      };
+    </script>
     <style>
-        body { font-family: 'Epilogue', sans-serif; }
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
         /* Efecto de brillo para el botón de detalles */
         .btn-manage:hover {
-            box-shadow: 0 0 15px rgba(0, 93, 112, 0.4);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
         }
     </style>
 </head>
-<body class="bg-[#131416] text-slate-100 min-h-screen">
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 
     <div class="p-8">
         <header class="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-                <h1 class="text-4xl font-black tracking-tighter uppercase italic text-white">Warey</h1>
-                <p class="text-[#8dc3ce] text-xs font-bold tracking-widest uppercase">Telemetry Control Node • Bienvenido, {{ Auth::user()->name }}</p>
+                <h1 class="text-4xl font-black tracking-tighter uppercase italic text-slate-900 dark:text-white">Warey</h1>
+                <p class="text-primary text-xs font-bold tracking-widest uppercase">Telemetry Control Node • Bienvenido, {{ Auth::user()->name }}</p>
             </div>
             <div class="flex items-center gap-3">
                 <button onclick="openLinkModal()" 
-                        class="bg-[#005d70] hover:bg-[#007b94] text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_15px_rgba(0,93,112,0.4)] flex items-center gap-2">
+                        class="bg-primary hover:bg-cyan-600 text-slate-900 dark:text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:shadow-[0_0_15px_rgba(0,93,112,0.4)] flex items-center gap-2">
                     <span class="material-symbols-outlined text-sm">add_to_home_screen</span> Vincular Teléfono
                 </button>
                 
                 <form action="{{ route('logout') }}" method="POST">
                     @csrf
                     <button type="submit" 
-                            class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2">
+                            class="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center gap-2">
                         <span class="material-symbols-outlined text-sm">logout</span> Salir
                     </button>
                 </form>
@@ -63,19 +88,19 @@
         @endif
 
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10" id="stats-grid">
-            <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
+            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
                 <p class="text-[10px] font-bold text-slate-500 uppercase">Total Fleet</p>
-                <p class="text-3xl font-black text-white" id="stat-total">{{ $stats['total'] }}</p>
+                <p class="text-3xl font-black text-slate-900 dark:text-white" id="stat-total">{{ $stats['total'] }}</p>
             </div>
-            <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
+            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
                 <p class="text-[10px] font-bold text-slate-500 uppercase">Moving Now</p>
-                <p class="text-3xl font-black text-[#6CD400]" id="stat-moving">{{ $stats['moving'] }}</p>
+                <p class="text-3xl font-black text-emerald-500" id="stat-moving">{{ $stats['moving'] }}</p>
             </div>
-            <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
+            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
                 <p class="text-[10px] font-bold text-slate-500 uppercase">Online</p>
-                <p class="text-3xl font-black text-[#005d70]" id="stat-online">{{ $stats['online'] }}</p>
+                <p class="text-3xl font-black text-primary" id="stat-online">{{ $stats['online'] }}</p>
             </div>
-            <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
+            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
                 <p class="text-[10px] font-bold text-slate-500 uppercase">Alerts</p>
                 <p class="text-3xl font-black text-red-500" id="stat-alerts">{{ $stats['alerts'] }}</p>
             </div>
@@ -84,9 +109,9 @@
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" id="devices-grid">
             @forelse($devices as $device)
             @php $isPending = is_null($device->last_seen); @endphp
-            <div class="bg-[#1c1e21] rounded-2xl border {{ $isPending ? 'border-slate-700 border-dashed' : 'border-slate-800 hover:border-[#005d70]/50' }} p-6 transition-all flex flex-col">
+            <div class="bg-white dark:bg-surface-dark rounded-2xl border {{ $isPending ? 'border-slate-200 dark:border-border-dark border-dashed' : 'border-slate-200 dark:border-border-dark hover:border-primary/50' }} p-6 transition-all flex flex-col">
                 <div class="flex justify-between items-start mb-6">
-                    <div class="bg-slate-800 size-12 rounded-xl flex items-center justify-center {{ $isPending ? 'text-slate-600' : 'text-[#005d70]' }}">
+                    <div class="bg-slate-100 dark:bg-slate-800 size-12 rounded-xl flex items-center justify-center {{ $isPending ? 'text-slate-600' : 'text-primary' }}">
                         <span class="material-symbols-outlined">
                             {{ $isPending ? 'phonelink_off' : ($device->activity == 'moving' ? 'navigation' : 'smartphone') }}
                         </span>
@@ -97,14 +122,14 @@
                             En espera
                         </span>
                     @else
-                        <span class="{{ $device->activity == 'moving' ? 'bg-[#6CD400]/20 text-[#6CD400]' : 'bg-slate-800 text-slate-500' }} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5">
-                            <span class="size-1.5 rounded-full {{ $device->activity == 'moving' ? 'bg-[#6CD400] animate-pulse' : 'bg-slate-500' }}"></span>
+                        <span class="{{ $device->activity == 'moving' ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500' }} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5">
+                            <span class="size-1.5 rounded-full {{ $device->activity == 'moving' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500' }}"></span>
                             {{ $device->activity }}
                         </span>
                     @endif
                 </div>
 
-                <h3 class="font-extrabold text-xl mb-1 truncate {{ $isPending ? 'text-slate-400' : 'text-white' }}">{{ $device->alias }}</h3>
+                <h3 class="font-extrabold text-xl mb-1 truncate {{ $isPending ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white' }}">{{ $device->alias }}</h3>
                 <p class="text-xs text-slate-500 mb-6 font-medium">ID: {{ $device->identifier }}</p>
 
                 @if($isPending)
@@ -114,7 +139,7 @@
                         <p class="text-xs text-slate-500 leading-relaxed">
                             @if($device->pairing_code)
                                 Abre la app móvil e ingresa el código<br>
-                                <span class="font-mono text-amber-400 font-bold">{{ $device->pairing_code }}</span><br>
+                                <span class="mono text-amber-400 font-bold">{{ $device->pairing_code }}</span><br>
                                 para activar el dispositivo.
                             @else
                                 Teléfono vinculado con éxito.<br>
@@ -126,22 +151,22 @@
                     {{-- Estado activo: mostrando datos reales --}}
                     <div class="space-y-4 mb-6">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-slate-400">
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined text-lg">
                                     {{ $device->is_charging ? 'battery_charging_full' : 'battery_horiz_075' }}
                                 </span>
                                 <span class="text-sm font-bold">Battery</span>
                             </div>
-                            <span class="text-sm font-black text-white">{{ $device->battery_level ?? '--' }}%</span>
+                            <span class="text-sm font-black text-slate-900 dark:text-white">{{ $device->battery_level ?? '--' }}%</span>
                         </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="h-full {{ ($device->battery_level ?? 100) < 20 ? 'bg-red-500' : 'bg-[#6CD400]' }}"
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="h-full {{ ($device->battery_level ?? 100) < 20 ? 'bg-red-500' : 'bg-emerald-500' }}"
                                  style="width: {{ $device->battery_level ?? 0 }}%"></div>
                         </div>
                         
                         <div class="flex justify-between items-center pt-2">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Network</span>
-                            <span class="text-[10px] font-mono text-[#005d70] bg-[#005d70]/10 px-2 py-0.5 rounded">
+                            <span class="text-[10px] mono text-primary bg-primary/10 px-2 py-0.5 rounded">
                                 {{ strtoupper($device->connection_type ?? 'Offline') }}
                             </span>
                         </div>
@@ -152,7 +177,7 @@
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Signal</span>
                             <div class="flex items-end gap-0.5">
                                 @for($i = 0; $i < 4; $i++)
-                                    <span class="w-1.5 rounded-sm {{ $i < $device->signal_strength ? 'bg-[#6CD400]' : 'bg-slate-700' }}" style="height: {{ 8 + $i * 5 }}px"></span>
+                                    <span class="w-1.5 rounded-sm {{ $i < $device->signal_strength ? 'bg-emerald-500' : 'bg-slate-700' }}" style="height: {{ 8 + $i * 5 }}px"></span>
                                 @endfor
                             </div>
                         </div>
@@ -162,7 +187,7 @@
                         @if($device->has_internet !== null)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Internet</span>
-                            <span class="text-[10px] font-mono {{ $device->has_internet ? 'text-emerald-400' : 'text-red-400' }} px-2 py-0.5 rounded {{ $device->has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10' }}">
+                            <span class="text-[10px] mono {{ $device->has_internet ? 'text-emerald-400' : 'text-red-400' }} px-2 py-0.5 rounded {{ $device->has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10' }}">
                                 {{ $device->has_internet ? 'ONLINE' : 'OFFLINE' }}
                             </span>
                         </div>
@@ -172,7 +197,7 @@
                         @if($device->tracking_state)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Tracking</span>
-                            <span class="text-[9px] font-mono {{ str_contains($device->tracking_state, 'UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10' }} px-2 py-0.5 rounded">
+                            <span class="text-[9px] mono {{ str_contains($device->tracking_state, 'UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10' }} px-2 py-0.5 rounded">
                                 {{ str_replace('_', ' ', $device->tracking_state) }}
                             </span>
                         </div>
@@ -182,7 +207,7 @@
                         @if($device->activity_status)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Estado</span>
-                            <span class="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                            <span class="text-[9px] mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
                                 {{ $device->activity_status }}
                             </span>
                         </div>
@@ -192,7 +217,7 @@
                         @if($device->speed_kmh !== null)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Velocidad</span>
-                            <span class="text-[9px] font-mono text-emerald-400">
+                            <span class="text-[9px] mono text-emerald-400">
                                 {{ number_format($device->speed_kmh, 1) }} km/h
                             </span>
                         </div>
@@ -202,7 +227,7 @@
                         @if($device->intervalo_aplicado)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Intervalo</span>
-                            <span class="text-[9px] font-mono text-cyan-400">
+                            <span class="text-[9px] mono text-cyan-400">
                                 Cada {{ $device->intervalo_aplicado }}s
                             </span>
                         </div>
@@ -212,7 +237,7 @@
                         @if($device->motivo)
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Motivo</span>
-                            <span class="text-[9px] font-mono text-purple-400">
+                            <span class="text-[9px] mono text-purple-400">
                                 {{ strtoupper(str_replace('_', ' ', $device->motivo)) }}
                             </span>
                         </div>
@@ -220,18 +245,18 @@
                     </div>
                 @endif
                 
-                <div class="text-[10px] {{ $isPending ? 'text-amber-500/50' : 'text-slate-600' }} font-mono mb-6 italic">
+                <div class="text-[10px] {{ $isPending ? 'text-amber-500/50' : 'text-slate-600' }} mono mb-6 italic">
                     {{ $isPending ? 'ESPERANDO PRIMERA CONEXIÓN...' : 'LAST SYNC: ' . $device->last_seen->diffForHumans() }}
                 </div>
 
                 <div class="mt-auto flex items-center gap-3">
                     @if(!$isPending)
                         <a href="{{ route('device.show', $device) }}"
-                           class="btn-manage flex-1 bg-[#005d70] text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">
+                           class="btn-manage flex-1 bg-primary text-slate-900 dark:text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">
                             Manage Node
                         </a>
                     @else
-                        <span class="flex-1 bg-slate-800 text-slate-600 text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider cursor-not-allowed">
+                        <span class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider cursor-not-allowed">
                             Teléfono en Espera
                         </span>
                     @endif
@@ -241,19 +266,19 @@
                         @csrf
                         @method('DELETE')
                         <button type="submit"
-                                class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-white transition-all">
+                                class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-slate-900 dark:text-white transition-all">
                             <span class="material-symbols-outlined text-xl">delete</span>
                         </button>
                     </form>
                 </div>
             </div>
             @empty
-            <div class="col-span-full bg-[#1c1e21] border border-dashed border-slate-800 rounded-3xl p-12 text-center">
+            <div class="col-span-full bg-white dark:bg-surface-dark border border-dashed border-slate-200 dark:border-border-dark rounded-3xl p-12 text-center">
                 <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">cell_tower</span>
-                <h3 class="text-lg font-bold text-white mb-2">No hay dispositivos vinculados</h3>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">No hay dispositivos vinculados</h3>
                 <p class="text-xs text-slate-500 max-w-sm mx-auto mb-6">Vincula un teléfono para comenzar a recibir información de telemetría y ubicación en tiempo real.</p>
                 <button onclick="openLinkModal()" 
-                        class="bg-[#005d70] hover:bg-[#007b94] text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
+                        class="bg-primary hover:bg-cyan-600 text-slate-900 dark:text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
                     Vincular Primer Teléfono
                 </button>
             </div>
@@ -263,53 +288,53 @@
 
     <!-- Modal de Vinculación de Nuevo Teléfono -->
     <div id="link-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-        <div class="bg-[#1c1e21] border border-slate-800 rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
-            <button onclick="closeLinkModal()" class="absolute top-4 right-4 text-slate-500 hover:text-white transition-colors">
+        <div class="bg-white dark:bg-surface-dark border border-slate-200 dark:border-border-dark rounded-3xl p-8 max-w-md w-full mx-4 shadow-2xl relative">
+            <button onclick="closeLinkModal()" class="absolute top-4 right-4 text-slate-500 hover:text-slate-900 dark:text-white transition-colors">
                 <span class="material-symbols-outlined">close</span>
             </button>
 
             <div class="flex items-center gap-3 mb-6">
                 <span class="material-symbols-outlined text-[#00e5ff] text-3xl">add_to_home_screen</span>
                 <div>
-                    <h3 class="text-xl font-bold text-white">Vincular Teléfono</h3>
-                    <p class="text-[10px] text-[#8dc3ce] font-bold tracking-wider uppercase">Fase de Desarrollo</p>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-white">Vincular Teléfono</h3>
+                    <p class="text-[10px] text-primary font-bold tracking-wider uppercase">Fase de Desarrollo</p>
                 </div>
             </div>
 
-            <p class="text-xs text-slate-400 mb-6 leading-relaxed bg-slate-900/60 p-4 rounded-xl border border-white/5 font-medium">
-                ⚙️ <span class="font-bold text-white">Modo Desarrollo:</span> El ID único se genera automáticamente. Cópialo y pégalo en la app móvil Flutter para sincronizar el canal de telemetría y habilitar el rastreo.
+            <p class="text-xs text-slate-500 dark:text-slate-400 mb-6 leading-relaxed bg-slate-900/60 p-4 rounded-xl border border-white/5 font-medium">
+                ⚙️ <span class="font-bold text-slate-900 dark:text-white">Modo Desarrollo:</span> El ID único se genera automáticamente. Cópialo y pégalo en la app móvil Flutter para sincronizar el canal de telemetría y habilitar el rastreo.
             </p>
 
             <form action="{{ route('device.store') }}" method="POST" class="space-y-5">
                 @csrf
                 <div>
-                    <label for="alias" class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Alias del Dispositivo</label>
+                    <label for="alias" class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-wider">Alias del Dispositivo</label>
                     <input type="text" name="alias" id="alias" required
-                           class="w-full bg-slate-900 border border-slate-800 rounded-xl py-3 px-4 text-sm text-white placeholder-slate-600 outline-none focus:border-[#00e5ff] transition-all"
+                           class="w-full bg-slate-900 border border-slate-200 dark:border-border-dark rounded-xl py-3 px-4 text-sm text-slate-900 dark:text-white placeholder-slate-600 outline-none focus:border-[#00e5ff] transition-all"
                            placeholder="Ej. Celular de Mamá, iPhone de Carlos">
                 </div>
 
                 <div>
-                    <label for="identifier" class="block text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wider">Identificador Único (Auto-generado)</label>
+                    <label for="identifier" class="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 tracking-wider">Identificador Único (Auto-generado)</label>
                     <div class="flex items-center gap-2">
                         <input type="text" name="identifier" id="identifier" readonly required
-                               class="flex-1 bg-slate-950 border border-slate-700 rounded-xl py-3 px-4 text-sm text-[#00e5ff] outline-none font-mono tracking-widest cursor-default select-all"
+                               class="flex-1 bg-slate-950 border border-slate-200 dark:border-border-dark rounded-xl py-3 px-4 text-sm text-[#00e5ff] outline-none mono tracking-widest cursor-default select-all"
                                placeholder="Generando...">
                         <button type="button" id="copy-btn" onclick="copyIdentifier()"
                                 title="Copiar ID"
-                                class="flex-shrink-0 bg-slate-800 hover:bg-[#005d70] border border-slate-700 text-slate-400 hover:text-white p-3 rounded-xl transition-all">
+                                class="flex-shrink-0 bg-slate-100 dark:bg-slate-800 hover:bg-primary border border-slate-200 dark:border-border-dark text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white p-3 rounded-xl transition-all">
                             <span id="copy-icon" class="material-symbols-outlined text-xl">content_copy</span>
                         </button>
                     </div>
                     <p id="copy-feedback" class="text-[10px] text-emerald-400 font-bold mt-1.5 hidden">✓ ID copiado al portapapeles</p>
                 </div>
 
-                <div class="text-[10px] text-slate-500 font-mono italic">
+                <div class="text-[10px] text-slate-500 mono italic">
                     * Límite actual de 3 dispositivos por cuenta de usuario.
                 </div>
 
                 <button type="submit" 
-                        class="w-full bg-[#005d70] hover:bg-[#007b94] text-white py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
+                        class="w-full bg-primary hover:bg-cyan-600 text-slate-900 dark:text-white py-3.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
                     Sincronizar y Vincular
                 </button>
             </form>
@@ -317,12 +342,12 @@
     </div>
 
     <!-- Indicador de estado de sincronización en vivo -->
-    <div id="sync-indicator" class="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-[#1c1e21]/90 backdrop-blur-sm border border-slate-800 rounded-full px-4 py-2 shadow-2xl transition-all">
+    <div id="sync-indicator" class="fixed bottom-4 right-4 z-50 flex items-center gap-2 bg-white dark:bg-surface-dark/90 backdrop-blur-sm border border-slate-200 dark:border-border-dark rounded-full px-4 py-2 shadow-2xl transition-all">
         <span id="sync-dot" class="size-2 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span id="sync-text" class="text-[10px] font-mono text-slate-400">Sincronizado</span>
-        <span id="sync-latency" class="text-[9px] font-mono text-slate-600"></span>
+        <span id="sync-text" class="text-[10px] mono text-slate-500 dark:text-slate-400">Sincronizado</span>
+        <span id="sync-latency" class="text-[9px] mono text-slate-600"></span>
         <svg id="sync-sparkline" class="hidden md:block" width="60" height="18" viewBox="0 0 60 18" style="flex-shrink: 0; opacity: 0.6;"></svg>
-        <span id="sync-time" class="text-[9px] font-mono text-slate-600"></span>
+        <span id="sync-time" class="text-[9px] mono text-slate-600"></span>
     </div>
 
     <script>
@@ -351,12 +376,12 @@
             navigator.clipboard.writeText(idValue).then(() => {
                 document.getElementById('copy-icon').textContent = 'check_circle';
                 document.getElementById('copy-feedback').classList.remove('hidden');
-                document.getElementById('copy-btn').classList.add('bg-[#005d70]', 'text-white');
+                document.getElementById('copy-btn').classList.add('bg-primary', 'text-slate-900 dark:text-white');
 
                 setTimeout(() => {
                     document.getElementById('copy-icon').textContent = 'content_copy';
                     document.getElementById('copy-feedback').classList.add('hidden');
-                    document.getElementById('copy-btn').classList.remove('bg-[#005d70]', 'text-white');
+                    document.getElementById('copy-btn').classList.remove('bg-primary', 'text-slate-900 dark:text-white');
                 }, 2500);
             }).catch(() => {
                 document.getElementById('identifier').select();
@@ -413,10 +438,10 @@
                 const latency = Date.now() - serverMs;
                 syncLatency.textContent = `${latency}ms`;
                 syncLatency.className = latency < 200
-                    ? 'text-[9px] font-mono text-emerald-500'
+                    ? 'text-[9px] mono text-emerald-500'
                     : latency < 500
-                        ? 'text-[9px] font-mono text-amber-400'
-                        : 'text-[9px] font-mono text-red-500';
+                        ? 'text-[9px] mono text-amber-400'
+                        : 'text-[9px] mono text-red-500';
 
                 // Almacenar y renderizar sparkline
                 latencyHistory.push(latency);
@@ -434,17 +459,17 @@
             if (status === 'connected') {
                 syncDot.className = 'size-2 rounded-full bg-emerald-500 animate-pulse';
                 syncText.textContent = message || 'Sincronizado';
-                syncText.className = 'text-[10px] font-mono text-emerald-400';
+                syncText.className = 'text-[10px] mono text-emerald-400';
                 syncTime.textContent = new Date().toLocaleTimeString();
                 reconnectAttempts = 0;
             } else if (status === 'connecting') {
                 syncDot.className = 'size-2 rounded-full bg-amber-400 animate-pulse';
                 syncText.textContent = message || 'Conectando...';
-                syncText.className = 'text-[10px] font-mono text-amber-400';
+                syncText.className = 'text-[10px] mono text-amber-400';
             } else if (status === 'error') {
                 syncDot.className = 'size-2 rounded-full bg-red-500';
                 syncText.textContent = message || 'Error de conexión';
-                syncText.className = 'text-[10px] font-mono text-red-400';
+                syncText.className = 'text-[10px] mono text-red-400';
                 syncTime.textContent = `Reintento ${reconnectAttempts}`;
             }
         }
@@ -459,18 +484,18 @@
             const lastSeen = device.last_seen || 'ESPERANDO PRIMERA CONEXIÓN...';
 
             return `
-            <div class="bg-[#1c1e21] rounded-2xl border ${isPending ? 'border-slate-700 border-dashed' : 'border-slate-800 hover:border-[#005d70]/50'} p-6 transition-all flex flex-col">
+            <div class="bg-white dark:bg-surface-dark rounded-2xl border ${isPending ? 'border-slate-200 dark:border-border-dark border-dashed' : 'border-slate-200 dark:border-border-dark hover:border-primary/50'} p-6 transition-all flex flex-col">
                 <div class="flex justify-between items-start mb-6">
-                    <div class="bg-slate-800 size-12 rounded-xl flex items-center justify-center ${isPending ? 'text-slate-600' : 'text-[#005d70]'}">
+                    <div class="bg-slate-100 dark:bg-slate-800 size-12 rounded-xl flex items-center justify-center ${isPending ? 'text-slate-600' : 'text-primary'}">
                         <span class="material-symbols-outlined">${isPending ? 'phonelink_off' : (isMoving ? 'navigation' : 'smartphone')}</span>
                     </div>
                     ${isPending
                         ? `<span class="bg-amber-500/10 text-amber-400 px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5"><span class="size-1.5 rounded-full bg-amber-400 animate-pulse"></span> En espera</span>`
-                        : `<span class="${isMoving ? 'bg-[#6CD400]/20 text-[#6CD400]' : 'bg-slate-800 text-slate-500'} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5"><span class="size-1.5 rounded-full ${isMoving ? 'bg-[#6CD400] animate-pulse' : 'bg-slate-500'}"></span> ${activity}</span>`
+                        : `<span class="${isMoving ? 'bg-emerald-500/20 text-emerald-500' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'} px-3 py-1 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5"><span class="size-1.5 rounded-full ${isMoving ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}"></span> ${activity}</span>`
                     }
                 </div>
 
-                <h3 class="font-extrabold text-xl mb-1 truncate ${isPending ? 'text-slate-400' : 'text-white'}">${device.alias}</h3>
+                <h3 class="font-extrabold text-xl mb-1 truncate ${isPending ? 'text-slate-500 dark:text-slate-400' : 'text-slate-900 dark:text-white'}">${device.alias}</h3>
                 <p class="text-xs text-slate-500 mb-6 font-medium">ID: ${device.identifier}</p>
 
                 ${isPending ? `
@@ -479,7 +504,7 @@
                         <p class="text-xs text-slate-500 leading-relaxed">
                             ${device.pairing_code ? `
                                 Abre la app móvil e ingresa el código<br>
-                                <span class="font-mono text-amber-400 font-bold">${device.pairing_code}</span><br>
+                                <span class="mono text-amber-400 font-bold">${device.pairing_code}</span><br>
                                 para activar el dispositivo.
                             ` : `
                                 Teléfono vinculado con éxito.<br>
@@ -490,32 +515,32 @@
                 ` : `
                     <div class="space-y-4 mb-6">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2 text-slate-400">
+                            <div class="flex items-center gap-2 text-slate-500 dark:text-slate-400">
                                 <span class="material-symbols-outlined text-lg">${isCharging ? 'battery_charging_full' : 'battery_horiz_075'}</span>
                                 <span class="text-sm font-bold">Battery</span>
                             </div>
-                            <span class="text-sm font-black text-white">${batteryLevel ?? '--'}%</span>
+                            <span class="text-sm font-black text-slate-900 dark:text-white">${batteryLevel ?? '--'}%</span>
                         </div>
-                        <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                            <div class="h-full ${(batteryLevel ?? 100) < 20 ? 'bg-red-500' : 'bg-[#6CD400]'}" style="width: ${batteryLevel ?? 0}%"></div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                            <div class="h-full ${(batteryLevel ?? 100) < 20 ? 'bg-red-500' : 'bg-emerald-500'}" style="width: ${batteryLevel ?? 0}%"></div>
                         </div>
                         <div class="flex justify-between items-center pt-2">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Network</span>
-                            <span class="text-[10px] font-mono text-[#005d70] bg-[#005d70]/10 px-2 py-0.5 rounded">${connectionType.toUpperCase()}</span>
+                            <span class="text-[10px] mono text-primary bg-primary/10 px-2 py-0.5 rounded">${connectionType.toUpperCase()}</span>
                         </div>
 
                         ${device.signal_strength !== null && device.signal_strength !== undefined ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Signal</span>
                             <div class="flex items-end gap-0.5">
-                                ${Array.from({length: 4}, (_, i) => `<span class="w-1.5 rounded-sm ${i < device.signal_strength ? 'bg-[#6CD400]' : 'bg-slate-700'}" style="height: ${8 + i * 5}px"></span>`).join('')}
+                                ${Array.from({length: 4}, (_, i) => `<span class="w-1.5 rounded-sm ${i < device.signal_strength ? 'bg-emerald-500' : 'bg-slate-700'}" style="height: ${8 + i * 5}px"></span>`).join('')}
                             </div>
                         </div>` : ''}
 
                         ${device.has_internet !== null && device.has_internet !== undefined ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Internet</span>
-                            <span class="text-[10px] font-mono ${device.has_internet ? 'text-emerald-400' : 'text-red-400'} px-2 py-0.5 rounded ${device.has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10'}">
+                            <span class="text-[10px] mono ${device.has_internet ? 'text-emerald-400' : 'text-red-400'} px-2 py-0.5 rounded ${device.has_internet ? 'bg-emerald-500/10' : 'bg-red-500/10'}">
                                 ${device.has_internet ? 'ONLINE' : 'OFFLINE'}
                             </span>
                         </div>` : ''}
@@ -523,7 +548,7 @@
                         ${device.tracking_state ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Tracking</span>
-                            <span class="text-[9px] font-mono ${device.tracking_state.includes('UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'} px-2 py-0.5 rounded">
+                            <span class="text-[9px] mono ${device.tracking_state.includes('UNSAFE') ? 'text-amber-400 bg-amber-500/10' : 'text-emerald-400 bg-emerald-500/10'} px-2 py-0.5 rounded">
                                 ${device.tracking_state.replace(/_/g, ' ')}
                             </span>
                         </div>` : ''}
@@ -531,7 +556,7 @@
                         ${device.activity_status ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Estado</span>
-                            <span class="text-[9px] font-mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
+                            <span class="text-[9px] mono text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded">
                                 ${device.activity_status}
                             </span>
                         </div>` : ''}
@@ -539,7 +564,7 @@
                         ${device.speed_kmh !== null && device.speed_kmh !== undefined ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Velocidad</span>
-                            <span class="text-[9px] font-mono text-emerald-400">
+                            <span class="text-[9px] mono text-emerald-400">
                                 ${parseFloat(device.speed_kmh).toFixed(1)} km/h
                             </span>
                         </div>` : ''}
@@ -547,7 +572,7 @@
                         ${device.intervalo_aplicado ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Intervalo</span>
-                            <span class="text-[9px] font-mono text-cyan-400">
+                            <span class="text-[9px] mono text-cyan-400">
                                 Cada ${device.intervalo_aplicado}s
                             </span>
                         </div>` : ''}
@@ -555,26 +580,26 @@
                         ${device.motivo ? `
                         <div class="flex items-center justify-between pt-1">
                             <span class="text-[10px] font-bold text-slate-500 uppercase">Motivo</span>
-                            <span class="text-[9px] font-mono text-purple-400">
+                            <span class="text-[9px] mono text-purple-400">
                                 ${device.motivo.replace(/_/g, ' ').toUpperCase()}
                             </span>
                         </div>` : ''}
                     </div>
                 `}
-                <div class="text-[10px] ${isPending ? 'text-amber-500/50' : 'text-slate-600'} font-mono mb-6 italic">
+                <div class="text-[10px] ${isPending ? 'text-amber-500/50' : 'text-slate-600'} mono mb-6 italic">
                     ${isPending ? 'ESPERANDO PRIMERA CONEXIÓN...' : 'LAST SYNC: ' + lastSeen}
                 </div>
 
                 <div class="mt-auto flex items-center gap-3">
                     ${!isPending
-                        ? `<a href="${device.show_url}" class="btn-manage flex-1 bg-[#005d70] text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">Manage Node</a>`
-                        : `<span class="flex-1 bg-slate-800 text-slate-600 text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider cursor-not-allowed">Teléfono en Espera</span>`
+                        ? `<a href="${device.show_url}" class="btn-manage flex-1 bg-primary text-slate-900 dark:text-white text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all hover:brightness-110">Manage Node</a>`
+                        : `<span class="flex-1 bg-slate-100 dark:bg-slate-800 text-slate-600 text-center py-3 rounded-xl text-xs font-bold uppercase tracking-wider cursor-not-allowed">Teléfono en Espera</span>`
                     }
                     <form action="${device.delete_url}" method="POST"
                           onsubmit="return confirm('¿Confirmas la desconexión total del nodo ${device.alias}?')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-white transition-all">
+                        <button type="submit" class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-slate-900 dark:text-white transition-all">
                             <span class="material-symbols-outlined text-xl">delete</span>
                         </button>
                     </form>
@@ -584,11 +609,11 @@
 
         function renderEmptyState() {
             return `
-            <div class="col-span-full bg-[#1c1e21] border border-dashed border-slate-800 rounded-3xl p-12 text-center">
+            <div class="col-span-full bg-white dark:bg-surface-dark border border-dashed border-slate-200 dark:border-border-dark rounded-3xl p-12 text-center">
                 <span class="material-symbols-outlined text-5xl text-slate-600 mb-4">cell_tower</span>
-                <h3 class="text-lg font-bold text-white mb-2">No hay dispositivos vinculados</h3>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">No hay dispositivos vinculados</h3>
                 <p class="text-xs text-slate-500 max-w-sm mx-auto mb-6">Vincula un teléfono para comenzar a recibir información de telemetría y ubicación en tiempo real.</p>
-                <button onclick="openLinkModal()" class="bg-[#005d70] hover:bg-[#007b94] text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
+                <button onclick="openLinkModal()" class="bg-primary hover:bg-cyan-600 text-slate-900 dark:text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all">
                     Vincular Primer Teléfono
                 </button>
             </div>`;

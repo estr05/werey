@@ -65,9 +65,11 @@ Route::prefix('v1')->group(function () {
 
         // Estado del dispositivo — batería, conectividad, señal, tracking_state
         Route::post('device-status', [DeviceStatusController::class, 'store']);
+        Route::post('device-status/batch', [DeviceStatusController::class, 'storeBatch']);
 
         // Ubicación GPS — frames de posición desde el motor de rastreo de la app móvil
         Route::post('location', [LocationController::class, 'store']);
+        Route::post('location/batch', [LocationController::class, 'storeBatch']);
 
         // Diagnóstico — estado RAW del dispositivo (para debug)
         Route::prefix('diagnostics')->group(function () {
