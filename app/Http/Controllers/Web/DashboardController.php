@@ -215,7 +215,7 @@ class DashboardController extends Controller
                 'lng'            => (float) $p->longitude,
                 'activity'       => $p->activity ?? 'still',
                 'movement_type'  => $p->movement_type ?? 'STATIC',
-                'speed_kmh'      => $p->speed_kmh ? (float) $p->speed_kmh : null,
+                'speed_kmh'      => $p->speed_kmh !== null ? (float) $p->speed_kmh : null,
                 'battery'        => $p->battery_level,
                 'is_charging'    => (bool) $p->is_charging,
                 'screen_active'  => (bool) $p->screen_active,
@@ -420,10 +420,10 @@ class DashboardController extends Controller
 
                 if ($changed) {
                     $payload = json_encode([
-                        'latitude'    => $device->latitude ? (float) $device->latitude : null,
-                        'longitude'   => $device->longitude ? (float) $device->longitude : null,
-                        'bearing'     => $device->bearing ? (float) $device->bearing : null,
-                        'speed_kmh'   => $device->speed_kmh ? (float) $device->speed_kmh : null,
+                        'latitude'    => $device->latitude !== null ? (float) $device->latitude : null,
+                        'longitude'   => $device->longitude !== null ? (float) $device->longitude : null,
+                        'bearing'     => $device->bearing !== null ? (float) $device->bearing : null,
+                        'speed_kmh'   => $device->speed_kmh !== null ? (float) $device->speed_kmh : null,
                         'activity'    => $device->activity ?? 'still',
                         'movement_type' => $device->motivo ?? null,
                         'battery'     => $device->battery_level,

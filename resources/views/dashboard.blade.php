@@ -31,6 +31,7 @@
         },
       };
     </script>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .mono { font-family: 'JetBrains Mono', monospace; }
@@ -597,8 +598,8 @@
                     }
                     <form action="${device.delete_url}" method="POST"
                           onsubmit="return confirm('¿Confirmas la desconexión total del nodo ${device.alias}?')">
-                        @csrf
-                        @method('DELETE')
+                        <input type="hidden" name="_token" value="${(document.querySelector('meta[name="csrf-token"]') || {}).getAttribute ? document.querySelector('meta[name="csrf-token"]').getAttribute('content') : ''}">
+                        <input type="hidden" name="_method" value="DELETE">
                         <button type="submit" class="bg-red-500/10 text-red-500 p-3 rounded-xl hover:bg-red-500 hover:text-slate-900 dark:text-white transition-all">
                             <span class="material-symbols-outlined text-xl">delete</span>
                         </button>
