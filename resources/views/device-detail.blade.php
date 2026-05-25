@@ -692,7 +692,9 @@
             });
 
             if (clean.length > 0 && bounds.isValid()) {
-                map.fitBounds(bounds, { padding: [50, 50] });
+                // Volar directamente a la posición más reciente del dispositivo
+                var lastPoint = clean[clean.length - 1];
+                map.flyTo([lastPoint.lat, lastPoint.lng], 17, { animate: true, duration: 1.0 });
             }
             
             // Actualizar lista visual de historial

@@ -83,11 +83,8 @@ class DashboardController extends Controller
             abort(403, 'No autorizado.');
         }
 
-        // Buscar fecha seleccionada o usar la del último registro
-        $lastPoint = $device->locationHistories()->orderBy('captured_at', 'desc')->first();
-        $defaultDate = ($lastPoint && $lastPoint->captured_at) 
-            ? $lastPoint->captured_at->toDateString() 
-            : ($lastPoint ? $lastPoint->created_at->toDateString() : now()->toDateString());
+        // Por defecto mostramos el día de hoy
+        $defaultDate = now()->toDateString();
         $selectedDate = $request->query('date', $defaultDate);
 
         // El historial se carga por API JSON en T5 para el mapa,
