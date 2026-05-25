@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\LocationHistory;
 use App\Services\SpatialFilter;
+use App\Services\TelemetryHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -96,57 +97,16 @@ class LocationController extends Controller
         $movementType = $validated['movement_type'] ?? 'STATIC';
 
         // Calcular speed_kmh, intervalo_aplicado y motivo si no se envían
-        $speedKmh = $validated['speed_kmh'] ?? null;
-        if ($speedKmh === null) {
-            $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
-            $speedKmh = $speedMs * 3.6;
-        }
+        $helper = new TelemetryHelper();
+        $speedKmh = $helper->calculateSpeedKmh(
+            $validated['speed_kmh'] ?? null,
+            $validated['smoothed_speed'] ?? null,
+            $validated['speed'] ?? null
+        );
 
-        $intervalo = $validated['intervalo_aplicado'] ?? null;
-        if ($intervalo === null) {
-            $isSafe = $validated['is_safe_zone'] ?? true;
-            if ($isSafe) {
-                if ($speedKmh < 2.0) {
-                    $intervalo = 30;
-                } else if ($speedKmh < 7.0) {
-                    $intervalo = 5;
-                } else if ($speedKmh < 15.0) {
-                    $intervalo = 4;
-                } else if ($speedKmh < 80.0) {
-                    $intervalo = 3;
-                } else {
-                    $intervalo = 2;
-                }
-            } else {
-                if ($speedKmh < 2.0) {
-                    $intervalo = 10;
-                } else if ($speedKmh < 7.0) {
-                    $intervalo = 5;
-                } else if ($speedKmh < 15.0) {
-                    $intervalo = 4;
-                } else if ($speedKmh < 80.0) {
-                    $intervalo = 3;
-                } else {
-                    $intervalo = 2;
-                }
-            }
-        }
-
-        $motivo = $validated['motivo'] ?? null;
-        if ($motivo === null) {
-            if ($speedKmh < 2.0) {
-                $isSafe = $validated['is_safe_zone'] ?? true;
-                $motivo = $isSafe ? 'safe_static_slow' : 'unsafe_static_slow';
-            } else if ($speedKmh < 7.0) {
-                $motivo = 'walking';
-            } else if ($speedKmh < 15.0) {
-                $motivo = 'running';
-            } else if ($speedKmh < 80.0) {
-                $motivo = 'vehicle';
-            } else {
-                $motivo = 'high_speed';
-            }
-        }
+        $isSafe = $validated['is_safe_zone'] ?? true;
+        $intervalo = $validated['intervalo_aplicado'] ?? $helper->calculateInterval($speedKmh, $isSafe);
+        $motivo = $validated['motivo'] ?? $helper->calculateMotivo($speedKmh, $isSafe);
 
         Log::info('[Location] Frame GPS recibido', [
             'device_id'          => $device->id,

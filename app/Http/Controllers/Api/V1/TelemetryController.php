@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Device;
 use App\Models\LocationHistory;
 use App\Services\SpatialFilter;
+use App\Services\TelemetryHelper;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -183,77 +184,31 @@ class TelemetryController extends Controller
         ]);
 
         // ── 5. Actualizar estado del dispositivo y cálculos secundarios ───────
-        $speedKmh = $validated['speed_kmh'] ?? null;
-        $intervalo = $validated['intervalo_aplicado'] ?? null;
-        $motivo = $validated['motivo'] ?? null;
-        
-        // Calcular speed_kmh real si no viene
-        if ($hasGps && $speedKmh === null) {
-            $speedMs = $validated['smoothed_speed'] ?? $validated['speed'] ?? 0.0;
-            $speedKmh = $speedMs * 3.6;
-        }
+        $helper = new TelemetryHelper();
+        $speedKmh = $helper->calculateSpeedKmh(
+            $validated['speed_kmh'] ?? null,
+            $validated['smoothed_speed'] ?? null,
+            $validated['speed'] ?? null
+        );
 
         // LÓGICA DE BEARING (Orientación) Y FILTRO ANTI-JITTER
-        $bearing = $validated['bearing'] ?? null;
-        if ($bearing !== null) {
-            // Normalización angular de seguridad (Wrap-around 0-359.99)
-            $bearing = fmod((float)$bearing, 360.0);
-            if ($bearing < 0) $bearing += 360.0;
-            
-            // Deadband Filter: Si la velocidad es < 2km/h, el GPS no sabe a donde apunta.
-            // Ignoramos la rotación loca y congelamos la última dirección conocida.
-            if (($speedKmh ?? 0) < 2.0) {
-                $bearing = clone $device->bearing; // Ignoramos el nuevo, retenemos el actual
-            }
-        } else {
-            $bearing = $device->bearing; // Si la app no manda bearing, mantenemos el anterior
-        }
+        $bearing = $helper->processBearing(
+            $validated['bearing'] ?? null,
+            $device->bearing,
+            $speedKmh
+        );
 
         if ($hasGps) {
+            $isSafe = str_contains(
+                $validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE',
+                'SAFE'
+            );
 
-            if ($intervalo === null) {
-                $isSafe = str_contains($validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE', 'SAFE');
-                if ($isSafe) {
-                    if ($speedKmh < 2.0) {
-                        $intervalo = 30;
-                    } else if ($speedKmh < 7.0) {
-                        $intervalo = 5;
-                    } else if ($speedKmh < 15.0) {
-                        $intervalo = 4;
-                    } else if ($speedKmh < 80.0) {
-                        $intervalo = 3;
-                    } else {
-                        $intervalo = 2;
-                    }
-                } else {
-                    if ($speedKmh < 2.0) {
-                        $intervalo = 10;
-                    } else if ($speedKmh < 7.0) {
-                        $intervalo = 5;
-                    } else if ($speedKmh < 15.0) {
-                        $intervalo = 4;
-                    } else if ($speedKmh < 80.0) {
-                        $intervalo = 3;
-                    } else {
-                        $intervalo = 2;
-                    }
-                }
-            }
-
-            if ($motivo === null) {
-                if ($speedKmh < 2.0) {
-                    $isSafe = str_contains($validated['tracking_state'] ?? $device->tracking_state ?? 'SAFE', 'SAFE');
-                    $motivo = $isSafe ? 'safe_static_slow' : 'unsafe_static_slow';
-                } else if ($speedKmh < 7.0) {
-                    $motivo = 'walking';
-                } else if ($speedKmh < 15.0) {
-                    $motivo = 'running';
-                } else if ($speedKmh < 80.0) {
-                    $motivo = 'vehicle';
-                } else {
-                    $motivo = 'high_speed';
-                }
-            }
+            $intervalo = $validated['intervalo_aplicado'] ?? $helper->calculateInterval($speedKmh, $isSafe);
+            $motivo = $validated['motivo'] ?? $helper->calculateMotivo($speedKmh, $isSafe);
+        } else {
+            $intervalo = null;
+            $motivo = null;
         }
 
         $deviceUpdate = [

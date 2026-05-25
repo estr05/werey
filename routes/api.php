@@ -5,12 +5,14 @@ use App\Http\Controllers\Api\V1\AuthApiController;
 use App\Http\Controllers\Api\V1\HandshakeController;
 use App\Http\Controllers\Api\V1\TelemetryController;
 use App\Http\Controllers\Api\V1\DeviceApiController;
+use App\Http\Controllers\Api\V1\DeviceInfoController;
 use App\Http\Controllers\Api\V1\LocationController;
 use App\Http\Controllers\Api\V1\DeviceStatusController;
 use App\Http\Controllers\Api\V1\DiagnosticsController;
 use App\Http\Controllers\Api\V1\SafePlaceController;
 
 /*
+
 |--------------------------------------------------------------------------
 | API Routes — Warey Mobile
 |--------------------------------------------------------------------------
@@ -19,15 +21,16 @@ use App\Http\Controllers\Api\V1\SafePlaceController;
 |
 | Rutas públicas (sin autenticación):
 |   POST /api/v1/auth/login
+|   POST /api/v1/devices/handshake
 |
 | Rutas protegidas (requieren Bearer Token de Sanctum):
-|   POST   /api/v1/auth/logout
-|   GET    /api/v1/auth/me
-|   POST   /api/v1/handshake
-|   POST   /api/v1/telemetry
-|   GET    /api/v1/telemetry/{identifier}/history
-|   GET    /api/v1/devices
-|   GET    /api/v1/devices/{identifier}
+|   Auth:      POST /auth/logout | GET /auth/me
+|   Telemetry: POST /telemetry | GET /telemetry/{identifier}/history
+|   Device:    POST /device-status | POST /location
+|   Devices:   GET /devices | GET /devices/{identifier}
+|   Device Me: GET /device | GET /device/safe-places | POST /device/safe-places
+|   SafePlaces: GET|POST /devices/{id}/safe-places | DELETE /safe-places/{id}
+|   Diagnostics: GET /diagnostics/device/{id}
 |
 */
 
@@ -51,26 +54,19 @@ Route::prefix('v1')->group(function () {
         // Auth — cierre de sesión y datos del usuario actual
         Route::prefix('auth')->group(function () {
             Route::post('/logout', [AuthApiController::class, 'logout']);
-            Route::get('/me',     [AuthApiController::class, 'me']);
+            Route::get('/me',      [AuthApiController::class, 'me']);
         });
 
         // Telemetría — envío de datos GPS+sensores e historial
-        // NOTA: Route::post('', ...) SIN trailing slash para que coincida
-        // exactamente con la URL que la app móvil llama ('telemetry').
-        // La app móvil envía tanto frames completos (con lat/lng) como
-        // frames de estado de dispositivo (sin lat/lng) a este endpoint.
         Route::prefix('telemetry')->group(function () {
             Route::post('',                              [TelemetryController::class, 'update']);
             Route::get('/{identifier}/history',          [TelemetryController::class, 'history']);
         });
 
         // Estado del dispositivo — batería, conectividad, señal, tracking_state
-        // La app (warey_movil) usa DeviceStatusRepository → POST /api/v1/device-status
-        // SEPARADO del endpoint /telemetry: NO requiere latitud/longitud
         Route::post('device-status', [DeviceStatusController::class, 'store']);
 
         // Ubicación GPS — frames de posición desde el motor de rastreo de la app móvil
-        // La app (warey_movil) usa LocationRepository → POST /api/v1/location
         Route::post('location', [LocationController::class, 'store']);
 
         // Diagnóstico — estado RAW del dispositivo (para debug)
@@ -78,16 +74,26 @@ Route::prefix('v1')->group(function () {
             Route::get('/device/{id}', [DiagnosticsController::class, 'show']);
         });
 
-        // Dispositivos — listado y detalle
+        // Dispositivos — listado y detalle (usan session para web, device_token para móvil)
         Route::prefix('devices')->group(function () {
-            Route::get('/',              [DeviceApiController::class, 'index']);
-            Route::get('/{identifier}', [DeviceApiController::class, 'show']);
+            Route::get('/',                  [DeviceApiController::class, 'index']);
+            Route::get('/{identifier}',      [DeviceApiController::class, 'show']);
 
-            // Safe Places — zonas seguras del dispositivo
-            Route::prefix('{identifier}/safe-places')->group(function () {
-                Route::get('/', [SafePlaceController::class, 'index']);
-            });
+            // Safe Places — zonas seguras del dispositivo (identificado por identifier)
+            Route::get('/{identifier}/safe-places',   [SafePlaceController::class, 'index']);
+            Route::post('/{identifier}/safe-places',  [SafePlaceController::class, 'store']);
         });
+
+        // Device Info — datos del dispositivo asociado al device_token actual
+        // (NO requiere identifier, lo resuelve desde el nombre del token)
+        Route::prefix('device')->group(function () {
+            Route::get('/',                   [DeviceInfoController::class, 'show']);
+            Route::get('/safe-places',        [DeviceInfoController::class, 'safePlaces']);
+            Route::post('/safe-places',       [DeviceInfoController::class, 'storeSafePlace']);
+        });
+
+        // Safe Places — operaciones directas por ID (requiere autenticación)
+        Route::delete('/safe-places/{id}', [SafePlaceController::class, 'destroy']);
 
     });
 });
