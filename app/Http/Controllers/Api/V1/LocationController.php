@@ -139,9 +139,16 @@ class LocationController extends Controller
         $spatialData = $filter->process($device, $validated);
 
         if ($spatialData['is_outlier'] ?? false) {
-            // Es basura, no actualizamos la ubicación actual, pero lo guardamos en historial como outlier?
-            // Para simplificar, ignoramos la actualización principal de posición si es outlier.
-            Log::info('[Location] Frame descartado por SpatialFilter', ['device_id' => $device->id]);
+            // Frame ruidoso (accuracy baja o salto cinemático).
+            // Aún así actualizamos last_seen para mantener el dispositivo como "online"
+            // y persistimos speed_kmh para que el dashboard muestre velocidad.
+            $device->update([
+                'speed_kmh'          => $speedKmh,
+                'intervalo_aplicado' => $intervalo,
+                'motivo'             => $motivo,
+                'last_seen'          => now(),
+            ]);
+            Log::info('[Location] Frame outlier — solo se actualiza last_seen y speed_kmh', ['device_id' => $device->id]);
         } else {
             // Actualizamos las coordenadas con las suavizadas
             $validated['latitude'] = $spatialData['latitude'];

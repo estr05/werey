@@ -20,7 +20,8 @@ class SpatialFilter
     {
         $lat = (float) $point['latitude'];
         $lng = (float) $point['longitude'];
-        $accuracy = (float) ($point['accuracy'] ?? 65);
+        // Si el móvil no envía accuracy, asumimos 25m (valor razonable para GPS típico)
+        $accuracy = (float) ($point['accuracy'] ?? 25);
         $capturedAt = Carbon::parse($point['captured_at']);
         $activity = $point['activity'] ?? 'still';
 
@@ -30,15 +31,18 @@ class SpatialFilter
         $point['is_outlier'] = false;
         
         // Calcular confidence score básico basado en accuracy
-        // Accuracy de 5m -> 100, 65m -> 0
-        $confidence = max(0, min(100, 100 - (($accuracy - 5) * (100 / 60))));
+        // Accuracy de 5m -> 100, 150m -> 0 (escala relajada para GPS real)
+        $confidence = max(0, min(100, 100 - (($accuracy - 5) * (100 / 145))));
         $point['confidence_score'] = (int) $confidence;
 
-        // 1. Accuracy Threshold (Rechazo radical por mala triangulación)
-        if ($accuracy > 65.0) {
+        // 1. Accuracy Threshold (Rechazo por mala triangulación extrema)
+        // Umbral relajado a 150m: GPS en exteriores suele dar 5-50m,
+        // en interiores o cañones urbanos puede llegar a 100-150m.
+        // Solo rechazamos lecturas realmente inservibles (>150m).
+        if ($accuracy > 150.0) {
             $point['is_outlier'] = true;
             $point['confidence_score'] = 0;
-            Log::info("[SpatialFilter] Outlier detectado (Accuracy > 65): {$accuracy}m");
+            Log::info("[SpatialFilter] Outlier detectado (Accuracy > 150): {$accuracy}m");
             return $point;
         }
 
