@@ -112,9 +112,14 @@
                     <div class="flex-1 flex flex-col items-center justify-center py-4 gap-3 text-center mb-6">
                         <span class="material-symbols-outlined text-3xl text-slate-600">pending</span>
                         <p class="text-xs text-slate-500 leading-relaxed">
-                            Abre la app móvil e ingresa el código<br>
-                            <span class="font-mono text-amber-400 font-bold">{{ $device->pairing_code }}</span><br>
-                            para activar el dispositivo.
+                            @if($device->pairing_code)
+                                Abre la app móvil e ingresa el código<br>
+                                <span class="font-mono text-amber-400 font-bold">{{ $device->pairing_code }}</span><br>
+                                para activar el dispositivo.
+                            @else
+                                Teléfono vinculado con éxito.<br>
+                                Esperando los primeros datos de ubicación y telemetría...
+                            @endif
                         </p>
                     </div>
                 @else
@@ -472,9 +477,14 @@
                     <div class="flex-1 flex flex-col items-center justify-center py-4 gap-3 text-center mb-6">
                         <span class="material-symbols-outlined text-3xl text-slate-600">pending</span>
                         <p class="text-xs text-slate-500 leading-relaxed">
-                            Abre la app móvil e ingresa el código<br>
-                            <span class="font-mono text-amber-400 font-bold">${device.pairing_code}</span><br>
-                            para activar el dispositivo.
+                            ${device.pairing_code ? `
+                                Abre la app móvil e ingresa el código<br>
+                                <span class="font-mono text-amber-400 font-bold">${device.pairing_code}</span><br>
+                                para activar el dispositivo.
+                            ` : `
+                                Teléfono vinculado con éxito.<br>
+                                Esperando los primeros datos de ubicación y telemetría...
+                            `}
                         </p>
                     </div>
                 ` : `
