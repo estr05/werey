@@ -617,28 +617,27 @@
       var isMoving =
         p.activity === 'moving' ||
         ['WALKING', 'RUNNING', 'VEHICLE'].indexOf(p.movement_type) !== -1;
-      var colorClass = isMoving
-        ? 'text-[#6CD400]'
-        : 'text-slate-500';
-
+      
+      var statusColorClass = isMoving ? 'emerald-500' : 'slate-500';
+      
       var speedHtml =
         p.speed_kmh != null
-          ? 'Velocidad: <span class="text-emerald-400">' +
+          ? 'Spd: <span class="text-emerald-400">' +
             parseFloat(p.speed_kmh).toFixed(1) +
             ' km/h</span>'
-          : '';
+          : 'Spd: --';
+          
       var cardinalHtml = p.cardinal
-        ? ' \u2022 Dir: <span class="text-blue-400">' +
+        ? ' \u2022 Dir: ' +
           p.cardinal +
           ' (' +
           Math.round(p.bearing || 0) +
-          '\u00b0)</span>'
+          '\u00b0)'
         : '';
-      var motHtml = p.motivo
-        ? ' \u2022 Mot: <span class="text-purple-400">' +
-          p.motivo.replace('_', ' ').toUpperCase() +
-          '</span>'
-        : '';
+        
+      var accHtml = p.accuracy 
+        ? 'Acc: <span class="text-primary">' + Math.round(p.accuracy) + 'm</span>' 
+        : 'Acc: --';
 
       var gapHtml = '';
       if (isGap && nextP) {
@@ -646,50 +645,35 @@
           (time - new Date(nextP.time).getTime()) / 60000
         );
         gapHtml =
-          '<div class="relative pl-4 border-l-2 border-slate-200 dark:border-border-dark opacity-60 py-2"><div class="flex items-center gap-2"><div class="h-px bg-slate-200 dark:bg-border-dark flex-1"></div><span class="text-[8px] font-mono text-slate-400 px-2 uppercase font-bold">Offline / Gap (' +
+          '<div class="relative pl-4 pb-6 border-l-2 border-slate-800 last:border-0 last:pb-0 opacity-60">' +
+          '<div class="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-amber-500 ring-4 ring-background-dark"></div>' +
+          '<div class="flex items-center gap-2 mt-2 mb-2">' +
+          '<div class="h-px bg-slate-800 flex-1"></div>' +
+          '<span class="text-[9px] font-mono text-slate-500 uppercase tracking-widest font-bold">Offline / Gap (' +
           diffMins +
-          'm)</span><div class="h-px bg-slate-200 dark:bg-border-dark flex-1"></div></div></div>';
+          'm)</span>' +
+          '<div class="h-px bg-slate-800 flex-1"></div>' +
+          '</div></div>';
       }
 
       var borderClass = isMoving
-        ? 'border-emerald-500'
-        : 'border-slate-200 dark:border-border-dark';
+        ? 'border-emerald-500/30'
+        : 'border-slate-800';
+
+      var statusText = (p.movement_type || p.activity || '').toUpperCase();
 
       container.innerHTML +=
-        '<div id="' +
-        p._segId +
-        '-item-' +
-        i +
-        '" data-seg-id="' +
-        p._segId +
-        '" onclick="clickTimelineItem(\'' +
-        p._segId +
-        '\')" class="timeline-item cursor-pointer relative pl-4 border-l-2 ' +
-        borderClass +
-        ' opacity-80 hover:opacity-100 transition-all">' +
+        '<div id="' + p._segId + '-item-' + i + '" data-seg-id="' + p._segId + '" onclick="clickTimelineItem(\'' + p._segId + '\')" ' +
+        'class="timeline-item cursor-pointer relative pl-4 pb-6 border-l-2 ' + borderClass + ' last:border-0 last:pb-0 group hover:bg-slate-800/20 transition-all rounded-r-lg p-2 -ml-2">' +
+        '<div class="absolute -left-[7px] top-3 w-3 h-3 rounded-full bg-' + statusColorClass + ' ring-4 ring-background-dark group-hover:scale-125 transition-transform"></div>' +
         '<div class="flex justify-between items-start mb-1">' +
-        '<span class="text-xs font-bold mono ' +
-        (isMoving
-          ? 'text-slate-900 dark:text-white'
-          : 'text-slate-500') +
-        '">' +
-        (p.label_time || '') +
-        '</span>' +
-        '<span class="text-[9px] uppercase font-bold text-slate-400">' +
-        (p.movement_type || p.activity || '').toUpperCase() +
-        '</span></div>' +
-        '<div class="space-y-1">' +
-        '<p class="text-[9px] text-slate-500 mono">Bat: ' +
-        (p.battery || '--') +
-        '% \u2022 Acc: ' +
-        (p.accuracy ? Math.round(p.accuracy) + 'm' : '--') +
-        ' ' +
-        cardinalHtml +
-        '</p>' +
-        '<p class="text-[9px] text-slate-500 mono">' +
-        speedHtml +
-        motHtml +
-        '</p></div></div>' +
+        '<span class="text-xs font-bold text-slate-100 font-mono tracking-wider">' + (p.label_time || '') + '</span>' +
+        '<span class="text-[9px] uppercase tracking-wider text-' + statusColorClass + ' font-bold bg-' + statusColorClass + '/10 px-2 py-0.5 rounded">' + statusText + '</span>' +
+        '</div>' +
+        '<p class="text-[10px] text-slate-400 font-mono leading-relaxed group-hover:text-slate-300 transition-colors mt-2">' +
+        speedHtml + ' \u2022 Bat: ' + (p.battery || '--') + '%<br>' +
+        accHtml + cardinalHtml +
+        '</p></div>' +
         gapHtml;
     });
   }

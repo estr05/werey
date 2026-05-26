@@ -56,56 +56,62 @@
     </style>
 </head>
 
-<body class="bg-[#131416] text-slate-100 h-screen overflow-hidden flex flex-col">
-    
-    <div class="px-4 lg:px-6 pt-4 lg:pt-6 pb-2 shrink-0">
-        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 lg:mb-4">
-            <!-- Izquierda: Menú Telemetría + Back + Título -->
-            <div class="flex items-center gap-2 md:gap-4 w-full md:w-auto">
-                <button onclick="openLeftDrawer()" class="lg:hidden p-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-all shrink-0 border border-slate-700">
-                    <span class="material-symbols-outlined text-base">analytics</span>
+<body class="bg-background-dark text-slate-100 h-screen overflow-hidden flex flex-col">
+
+    <!-- Backdrop drawers móvil -->
+    <div id="drawers-backdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden opacity-0 transition-opacity duration-300 lg:hidden"></div>
+
+    <!-- HEADER -->
+    <header class="h-14 lg:h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border-dark bg-surface-dark z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <button onclick="openLeftDrawer()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700">
+                <span class="material-icons-round text-slate-300">menu</span>
+            </button>
+            <a href="{{ route('dashboard') }}" class="w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+                <span class="material-icons-round text-slate-300">arrow_back</span>
+            </a>
+            <div>
+                <h1 class="text-base lg:text-xl font-bold tracking-tight uppercase leading-none">Unit Control Center</h1>
+                <p class="text-[10px] uppercase tracking-widest text-slate-500 font-medium hidden sm:block">Rastreo de telemetría en tiempo real</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border border-primary/30 bg-primary/5 text-[10px] font-semibold text-primary uppercase tracking-wider">
+                <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+                <span class="hidden sm:inline">Encrypted Link Active</span>
+                <span class="sm:hidden">Live</span>
+            </div>
+            <button onclick="openRightDrawer()" class="lg:hidden w-10 h-10 flex items-center justify-center rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors border border-slate-700">
+                <span class="material-icons-round text-slate-300">tune</span>
+            </button>
+        </div>
+    </header>
+
+
+    <!-- MAIN -->
+    <main class="flex-1 flex overflow-hidden p-4 gap-4">
+
+        <!-- LEFT PANEL: Telemetría -->
+        <aside id="left-drawer" class="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] bg-surface-dark border-r border-border-dark z-50 transform -translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto lg:static lg:w-80 lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:shrink-0 flex flex-col gap-4 p-4 lg:p-0 lg:pr-0">
+
+            <!-- Mobile close header -->
+            <div class="flex lg:hidden justify-between items-center py-3 border-b border-border-dark mb-2">
+                <h2 class="text-sm font-bold text-white uppercase tracking-wider">Telemetría</h2>
+                <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white">
+                    <span class="material-icons-round">close</span>
                 </button>
-                <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all shrink-0">
-                    <span class="material-symbols-outlined text-white text-base">arrow_back</span>
-                </a>
-                <div class="min-w-0">
-                    <h1 class="text-lg md:text-2xl font-black text-white italic uppercase tracking-tighter leading-tight truncate">Unit Control Center</h1>
-                    <p class="text-[#8dc3ce] text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.3em] uppercase mt-0.5 md:mt-0 truncate">Rastreo en Tiempo Real</p>
-                </div>
             </div>
 
-            <!-- Derecha: Estado Link + Menú Métricas -->
-            <div class="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
-                <div class="bg-primary/10 border border-primary/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0">
-                    <span class="text-[9px] md:text-[10px] font-mono text-emerald-500 animate-pulse whitespace-nowrap">● ENCRYPTED LINK ACTIVE</span>
-                </div>
-                <button onclick="openRightDrawer()" class="lg:hidden p-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-all shrink-0 border border-slate-700">
-                    <span class="material-symbols-outlined text-base">tune</span>
-                </button>
-            </div>
-        </header>
-    </div>
-
-    <div class="flex-1 px-4 lg:px-6 pb-4 lg:pb-6 min-h-0 relative">
-        <div id="drawers-backdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 h-full">
-            
-            <!-- Panel Izquierdo: Telemetría actual y Estatus -->
-            <aside id="left-drawer" class="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] bg-[#131416] border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-4 lg:p-0 lg:pr-2">
-                <div class="flex lg:hidden justify-between items-center mb-2">
-                    <h2 class="text-sm font-black text-white italic uppercase">Telemetría</h2>
-                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                </div>
-                <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800 shrink-0">
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
-                                <span class="material-symbols-outlined">api</span>
-                            </div>
-                            <div>
-                                <p class="text-[10px] text-slate-500 uppercase font-bold">Actividad</p>
-                                <p class="text-white font-bold tracking-wider">{{ strtoupper($device->activity) }}</p>
-                            </div>
+            <!-- Activity + Battery Card -->
+            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark p-5 shrink-0">
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2 rounded-lg bg-emerald-500/10 text-emerald-500">
+                            <span class="material-icons-round text-xl">sensors</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] uppercase text-slate-500 font-bold">Actividad</p>
+                            <p class="text-sm font-bold uppercase">{{ $device->activity ?? 'N/A' }}</p>
                         </div>
                     </div>
                     <span class="w-2 h-2 rounded-full {{ $device->last_seen && $device->last_seen->gt(now()->subMinutes(5)) ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600' }}"></span>
@@ -117,12 +123,13 @@
                     </div>
                     <p class="text-[10px] text-slate-500 font-semibold mb-3">Cargando: {{ $device->is_charging ? 'SÍ' : 'NO' }}</p>
                     <div class="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                        <div class="h-full {{ $device->battery_level > 20 ? 'bg-primary' : 'bg-red-500' }} rounded-full" style="width: {{ $device->battery_level ?? 0 }}%"></div>
+                        <div class="h-full {{ ($device->battery_level ?? 0) > 20 ? 'bg-primary' : 'bg-red-500' }} rounded-full" style="width: {{ $device->battery_level ?? 0 }}%"></div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex-1 shrink-0">
+            <!-- Telemetry Status -->
+            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shrink-0">
                 <div class="p-4 border-b border-slate-200 dark:border-border-dark">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Estado de Telemetría</h3>
                 </div>
@@ -131,221 +138,192 @@
                         <span class="text-slate-500 uppercase font-medium">Tipo de Conexión</span>
                         <span class="px-2 py-0.5 rounded bg-blue-500/10 text-blue-500 font-bold uppercase text-[9px]">{{ strtoupper($device->connection_type ?? 'N/A') }}</span>
                     </div>
-
                     @if($device->has_internet !== null)
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Internet</span>
-                        <span class="px-2 py-0.5 rounded {{ $device->has_internet ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500' }} font-bold uppercase text-[9px]">
-                            {{ $device->has_internet ? 'Online' : 'Offline' }}
-                        </span>
+                        <span class="px-2 py-0.5 rounded {{ $device->has_internet ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500' }} font-bold uppercase text-[9px]">{{ $device->has_internet ? 'Online' : 'Offline' }}</span>
                     </div>
                     @endif
-
                     @if($device->tracking_state)
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Rastreo</span>
-                        <span class="px-2 py-0.5 rounded {{ str_contains($device->tracking_state, 'UNSAFE') ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500' }} font-bold uppercase text-[9px]">
-                            {{ str_replace('_', ' ', $device->tracking_state) }}
-                        </span>
+                        <span class="px-2 py-0.5 rounded {{ str_contains($device->tracking_state, 'UNSAFE') ? 'bg-amber-500/10 text-amber-500' : 'bg-emerald-500/10 text-emerald-500' }} font-bold uppercase text-[9px]">{{ str_replace('_', ' ', $device->tracking_state) }}</span>
                     </div>
                     @endif
-
                     @if($device->activity_status)
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Estado</span>
-                        <span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-500 font-bold uppercase text-[9px]">{{ $device->activity_status }}</span>
+                        <span class="px-2 py-0.5 rounded bg-slate-500/10 text-slate-400 font-bold uppercase text-[9px]">{{ $device->activity_status }}</span>
                     </div>
                     @endif
-
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Pantalla</span>
-                        <span class="{{ $device->screen_active ? 'text-primary' : 'text-slate-500' }} font-bold uppercase text-[10px]">
-                            {{ $device->screen_active ? 'Activa' : 'Inactiva' }}
-                        </span>
+                        <span class="{{ $device->screen_active ? 'text-primary' : 'text-slate-500' }} font-bold uppercase text-[10px]">{{ $device->screen_active ? 'Activa' : 'Inactiva' }}</span>
                     </div>
-
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Velocidad</span>
-                        <span id="live-speed" class="mono font-bold text-emerald-500">
-                            {{ $device->speed_kmh !== null ? number_format($device->speed_kmh, 1).' km/h' : '--' }}
-                        </span>
+                        <span id="live-speed" class="mono font-bold text-emerald-500">{{ $device->speed_kmh !== null ? number_format($device->speed_kmh, 1).' km/h' : '--' }}</span>
                     </div>
-
                     @if($device->intervalo_aplicado)
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Frecuencia</span>
                         <span class="text-primary font-bold uppercase text-[10px]">Cada {{ $device->intervalo_aplicado }}s</span>
                     </div>
                     @endif
-
                     @if($device->motivo)
                     <div class="flex justify-between items-center text-xs">
                         <span class="text-slate-500 uppercase font-medium">Categoría</span>
-                        <span class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-bold uppercase text-[9px]">
-                            {{ strtoupper(str_replace('_', ' ', $device->motivo)) }}
-                        </span>
+                        <span class="px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 font-bold uppercase text-[9px]">{{ strtoupper(str_replace('_', ' ', $device->motivo)) }}</span>
                     </div>
                     @endif
                 </div>
             </div>
 
-            <div class="rounded-xl p-4 shrink-0 {{ $safePlaces->count() == 0 ? 'bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700' : ($isInsideSafeZone ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-amber-500/5 border border-amber-500/20 animate-pulse') }}">
+            <!-- Safe Perimeter Status -->
+            <div class="rounded-xl p-4 shrink-0 {{ $safePlaces->count() == 0 ? 'bg-slate-800 border border-slate-700' : ($isInsideSafeZone ? 'bg-emerald-500/5 border border-emerald-500/20' : 'bg-amber-500/5 border border-amber-500/20') }}">
                 <div class="flex items-center gap-2 mb-2 {{ $safePlaces->count() == 0 ? 'text-slate-500' : ($isInsideSafeZone ? 'text-emerald-500' : 'text-amber-500') }}">
                     <span class="material-icons-round text-sm">{{ $safePlaces->count() == 0 ? 'info' : ($isInsideSafeZone ? 'verified_user' : 'warning') }}</span>
                     <span class="text-[10px] font-bold uppercase tracking-widest">Perímetro Seguro</span>
                 </div>
                 <p class="text-xs leading-relaxed">
-                    @if($safePlaces->count() == 0)
-                        Sin zonas seguras configuradas.
-                    @elseif($isInsideSafeZone)
-                        Dispositivo Seguro. Dentro de: <span class="font-bold border-b {{ $isInsideSafeZone ? 'border-emerald-500/30' : 'border-amber-500/30' }}">{{ $activeSafeZoneName }}</span>
-                    @else
-                        ⚠️ ALERTA: Fuera de perímetro seguro.
-                    @endif
+                    @if($safePlaces->count() == 0) Sin zonas seguras configuradas.
+                    @elseif($isInsideSafeZone) Dispositivo Seguro. Dentro de: <span class="font-bold border-b border-emerald-500/30">{{ $activeSafeZoneName }}</span>
+                    @else ⚠️ ALERTA: Fuera de perímetro seguro. @endif
                 </p>
             </div>
 
+            <!-- Emergency Lock -->
             <button class="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-xl transition-all flex items-center justify-center gap-2 shrink-0">
                 <span class="material-icons-round text-sm">lock_person</span>
                 <span class="text-[10px] font-bold uppercase tracking-widest">Bloqueo de Emergencia</span>
             </button>
-            </aside>
+        </aside>
 
-            <!-- Columna Central: Mapa Interactivo -->
-            <div class="lg:col-span-6 h-full relative">
-                
-                <!-- Overlay de Fecha del Historial en el Mapa -->
-                <div class="absolute top-4 left-4 lg:left-4 z-[400]">
-                    <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-3 py-2 text-[10px] lg:text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg hidden lg:flex">
-                        <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
-                        Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
-                    </div>
-                </div>
+        <!-- MAP SECTION -->
+        <section class="flex-1 relative rounded-2xl overflow-hidden border border-slate-200 dark:border-border-dark bg-slate-100 dark:bg-[#0d1117] map-grid">
 
-                <!-- FAB Derecho (Móvil) -->
-                <div class="absolute top-4 right-4 z-[400] flex flex-col items-end gap-2">
-                    <!-- Overlay flotante para agregar punto seguro -->
-                    <div id="perimeter-helper" class="hidden">
-                        <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-3 shadow-xl max-w-[200px] lg:max-w-xs animate-bounce">
-                            <div class="flex items-start gap-2">
-                                <span class="material-symbols-outlined text-[#6CD400] text-sm mt-0.5">place</span>
-                                <div>
-                                    <h5 class="text-[10px] lg:text-xs font-bold mb-1">Añadir Punto Seguro</h5>
-                                    <p class="text-[9px] lg:text-[10px] text-slate-400 leading-normal">Haz clic en el mapa.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <section class="absolute inset-0 rounded-2xl overflow-hidden border border-slate-200 dark:border-border-dark bg-slate-100 dark:bg-[#0d1117] map-grid shadow-lg">
-
-                    <div id="map-loader" class="absolute inset-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm z-[500] hidden flex flex-col items-center justify-center">
-                        <div class="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-                        <span class="text-xs font-mono font-bold text-primary tracking-widest animate-pulse uppercase">Cargando Historial...</span>
-                    </div>
-
-                    <div class="absolute bottom-4 left-4 z-[400] flex flex-col gap-2 pointer-events-none">
-                        <div id="live-indicator" class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-2 pointer-events-auto">
-                            <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                            <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider">Conectando...</span>
-                        </div>
-                    </div>
-
-                    <div id="safe-place-form-card" class="absolute left-4 lg:left-1/2 lg:-translate-x-1/2 bottom-4 z-[400] hidden max-w-sm w-full mx-auto pointer-events-auto">
-                        <div class="bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border border-slate-200 dark:border-border-dark rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-slate-100">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-xs font-black uppercase flex items-center gap-2">
-                                    <span class="material-icons-round text-primary text-base">verified_user</span>
-                                    Guardar Zona Segura
-                                </h4>
-                                <button onclick="cancelSafePlace()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
-                                    <span class="material-icons-round text-sm">close</span>
-                                </button>
-                            </div>
-
-                            <form action="{{ route('safe-place.store', $device) }}" method="POST" class="space-y-4">
-                                @csrf
-                                <input type="hidden" name="latitude" id="form-lat">
-                                <input type="hidden" name="longitude" id="form-lng">
-
-                                <div>
-                                    <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Nombre del Lugar</label>
-                                    <input type="text" name="name" required placeholder="Ej. Casa de Abuelos, Escuela"
-                                           class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl py-2 px-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-primary transition-all">
-                                </div>
-
-                                <div>
-                                    <div class="flex justify-between items-center mb-1">
-                                        <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Diámetro / Radio (Meters)</label>
-                                        <span id="radius-value" class="text-xs font-mono font-bold text-primary">150m</span>
-                                    </div>
-                                    <input type="range" name="radius_meters" id="radius-slider" min="50" max="1000" step="25" value="150"
-                                           class="w-full accent-primary bg-slate-200 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg"
-                                           oninput="updateCircleRadius(this.value)">
-                                </div>
-
-                                <button type="submit"
-                                        class="w-full bg-primary hover:bg-cyan-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">
-                                    Guardar Perímetro
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-
-                    <div id="map"></div>
-                </section>
+            <div id="map-loader" class="absolute inset-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm z-[500] hidden flex flex-col items-center justify-center">
+                <div class="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+                <span class="text-xs font-mono font-bold text-primary tracking-widest animate-pulse uppercase">Cargando Historial...</span>
             </div>
 
-            <!-- Panel Derecho: Zonas Seguras, Coordenadas e Historial de Pings -->
-            <aside id="right-drawer" class="fixed inset-y-0 right-0 w-[85vw] max-w-[320px] bg-[#131416] border-l border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-4 lg:p-0 lg:pl-2 shrink-0">
-                <div class="flex lg:hidden justify-between items-center mb-2">
-                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
-                    <h2 class="text-sm font-black text-white italic uppercase">Métricas</h2>
-                </div>
-                <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex flex-col overflow-hidden shrink-0">
-                    <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                        <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Historial Activo</h3>
-                        <span class="material-icons-round text-sm text-slate-400">calendar_today</span>
-                    </div>
-                    <div class="p-3">
-                        <select onchange="window.location.href = '?date=' + this.value;" class="w-full bg-slate-100 dark:bg-background-dark border-none outline-none cursor-pointer font-mono font-bold text-xs text-slate-900 dark:text-white rounded-lg p-2">
-                            @if(!in_array($selectedDate, $availableDates->toArray()))
-                                <option value="{{ $selectedDate }}" selected>{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }} (Sin datos)</option>
-                            @endif
-                            @foreach($availableDates as $date)
-                                <option value="{{ $date }}" {{ $date == $selectedDate ? 'selected' : '' }}>
-                                    {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
-                                </option>
-                            @endforeach
-                        </select>
+            <div class="absolute top-4 left-4 z-[400] flex gap-2">
+                <div class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-3">
+                    <span class="material-icons-round text-primary text-sm">calendar_today</span>
+                    <div class="flex flex-col">
+                        <span class="text-[9px] uppercase font-bold text-slate-500 leading-none mb-0.5">Historial</span>
+                        <span class="text-xs font-bold mono leading-none">{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}</span>
                     </div>
                 </div>
-                <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800 shrink-0">
-                    <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Métricas del Punto Actual</h4>
-                    <div class="bg-black/40 p-4 rounded-xl border border-white/5 relative group">
-                        <button onclick="copyToClipboard('{{ $device->latitude }}, {{ $device->longitude }}')" class="absolute right-3 top-3 text-slate-600 hover:text-white transition-colors">
-                            <span class="material-symbols-outlined text-sm">content_copy</span>
+                <div id="live-indicator" class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-2">
+                    <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider">Conectando...</span>
+                </div>
+            </div>
+
+            <div id="perimeter-helper" class="absolute top-4 right-4 z-[400] hidden">
+                <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-4 shadow-xl max-w-xs animate-bounce">
+                    <div class="flex items-start gap-2.5">
+                        <span class="material-icons-round text-[#6CD400] text-lg mt-0.5">place</span>
+                        <div>
+                            <h5 class="text-xs font-bold mb-1">Añadir Punto Seguro</h5>
+                            <p class="text-[10px] text-slate-400 leading-normal">Haz clic en el mapa para ubicar el centro de tu nueva zona segura.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="safe-place-form-card" class="absolute left-4 right-4 lg:left-1/2 lg:-translate-x-1/2 lg:right-auto bottom-4 z-[400] hidden max-w-sm">
+                <div class="bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border border-slate-200 dark:border-border-dark rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-slate-100">
+                    <div class="flex justify-between items-center mb-4">
+                        <h4 class="text-xs font-black uppercase flex items-center gap-2">
+                            <span class="material-icons-round text-primary text-base">verified_user</span>
+                            Guardar Zona Segura
+                        </h4>
+                        <button onclick="cancelSafePlace()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+                            <span class="material-icons-round text-sm">close</span>
                         </button>
-                        <p class="text-[10px] text-slate-500 mb-1">Coordenadas del Sensor</p>
-                        <div class="font-mono text-xs text-white">
-                            <p>LAT: {{ number_format($device->latitude, 6) }}°</p>
-                            <p>LNG: {{ number_format($device->longitude, 6) }}°</p>
+                    </div>
+                    <form action="{{ route('safe-place.store', $device) }}" method="POST" class="space-y-4">
+                        @csrf
+                        <input type="hidden" name="latitude" id="form-lat">
+                        <input type="hidden" name="longitude" id="form-lng">
+                        <div>
+                            <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Nombre del Lugar</label>
+                            <input type="text" name="name" required placeholder="Ej. Casa de Abuelos, Escuela" class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl py-2 px-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-primary transition-all">
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center mb-1">
+                                <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Radio (metros)</label>
+                                <span id="radius-value" class="text-xs font-mono font-bold text-primary">150m</span>
+                            </div>
+                            <input type="range" name="radius_meters" id="radius-slider" min="50" max="1000" step="25" value="150" class="w-full accent-primary" oninput="updateCircleRadius(this.value)">
+                        </div>
+                        <button type="submit" class="w-full bg-primary hover:bg-cyan-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">Guardar Perímetro</button>
+                    </form>
+                </div>
+            </div>
+
+            <div id="map"></div>
+        </section>
+
+        <!-- RIGHT PANEL -->
+        <aside id="right-drawer" class="fixed inset-y-0 right-0 w-[85vw] max-w-[320px] bg-surface-dark border-l border-border-dark z-50 transform translate-x-full transition-transform duration-300 ease-in-out overflow-y-auto lg:static lg:w-96 lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:shrink-0 flex flex-col gap-4 p-4 lg:p-0 lg:pl-0">
+
+            <div class="flex lg:hidden justify-between items-center py-3 border-b border-border-dark mb-2">
+                <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white">
+                    <span class="material-icons-round">close</span>
+                </button>
+                <h2 class="text-sm font-bold text-white uppercase tracking-wider">Métricas</h2>
+            </div>
+
+            <!-- Current Point Metrics -->
+            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex flex-col overflow-hidden shrink-0">
+                <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Métricas del Punto Actual</h3>
+                    <span class="material-icons-round text-sm text-slate-400">info</span>
+                </div>
+                <div class="p-4 space-y-4">
+                    <div class="bg-slate-50 dark:bg-background-dark/50 p-4 rounded-lg border border-slate-200 dark:border-border-dark relative">
+                        <button onclick="copyToClipboard('{{ $device->latitude }}, {{ $device->longitude }}')" class="absolute right-3 top-3 text-slate-400 hover:text-white transition-colors">
+                            <span class="material-icons-round text-sm">content_copy</span>
+                        </button>
+                        <span class="text-[9px] uppercase font-bold text-slate-500 block mb-2">Coordenadas del Sensor</span>
+                        <div class="space-y-1">
+                            <div class="flex gap-2"><span class="text-xs font-bold text-slate-500 mono">LAT:</span><span class="text-xs font-bold mono">{{ number_format($device->latitude, 6) }}°</span></div>
+                            <div class="flex gap-2"><span class="text-xs font-bold text-slate-500 mono">LNG:</span><span class="text-xs font-bold mono">{{ number_format($device->longitude, 6) }}°</span></div>
                         </div>
                     </div>
                     <div class="flex justify-between items-center">
                         <span class="text-[10px] uppercase font-medium text-slate-500">Última Señal</span>
-                        <span id="live-last-seen" class="text-[10px] font-bold text-primary uppercase">
-                            {{ $device->last_seen ? $device->last_seen->diffForHumans() : 'SIN DATOS' }}
-                        </span>
+                        <span id="live-last-seen" class="text-[10px] font-bold text-primary uppercase">{{ $device->last_seen ? $device->last_seen->diffForHumans() : 'SIN DATOS' }}</span>
                     </div>
                 </div>
             </div>
 
+            <!-- Date Selector -->
+            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shrink-0">
+                <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                    <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Historial Activo</h3>
+                    <span class="material-icons-round text-sm text-slate-400">calendar_today</span>
+                </div>
+                <div class="p-3">
+                    <select onchange="window.location.href = '?date=' + this.value;" class="w-full bg-slate-100 dark:bg-background-dark border-none outline-none cursor-pointer font-mono font-bold text-xs text-slate-900 dark:text-white rounded-lg p-2">
+                        @if(!in_array($selectedDate, $availableDates->toArray()))
+                            <option value="{{ $selectedDate }}" selected>{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }} (Sin datos)</option>
+                        @endif
+                        @foreach($availableDates as $date)
+                            <option value="{{ $date }}" {{ $date == $selectedDate ? 'selected' : '' }}>{{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}</option>
+                        @endforeach
+                    </select>
+                </div>
+            </div>
+
+            <!-- Safe Zones -->
             <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark shrink-0">
                 <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Zonas Seguras ({{ $safePlaces->count() }})</h3>
-                    <button id="btn-draw" onclick="toggleDrawingMode()" class="text-[10px] font-bold uppercase text-primary border-b border-primary/30 flex items-center gap-1 group">
+                    <button id="btn-draw" onclick="toggleDrawingMode()" class="text-[10px] font-bold uppercase text-primary border-b border-primary/30 flex items-center gap-1">
                         <span class="material-icons-round text-[10px]">add</span> Crear
                     </button>
                 </div>
@@ -356,9 +334,8 @@
                             <p class="text-sm font-bold">{{ $place->name }}</p>
                             <p class="text-[10px] text-emerald-500 font-bold uppercase">Radio: {{ $place->radius_meters }}m</p>
                         </div>
-                        <form action="{{ route('safe-place.destroy', $place->id) }}" method="POST" onsubmit="return confirm('¿Eliminar la zona segura {{ $place->name }}?')">
-                            @csrf
-                            @method('DELETE')
+                        <form action="{{ route('safe-place.destroy', $place->id) }}" method="POST" onsubmit="return confirm('¿Eliminar {{ $place->name }}?')">
+                            @csrf @method('DELETE')
                             <button type="submit" class="p-2 text-slate-400 hover:text-red-500 transition-colors">
                                 <span class="material-icons-round text-sm">delete_outline</span>
                             </button>
@@ -370,32 +347,32 @@
                 </div>
             </div>
 
+            <!-- Movement History -->
             <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex-1 flex flex-col min-h-0 overflow-hidden">
                 <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Movimientos de Hoy</h3>
                     <span class="text-[10px] font-bold uppercase text-primary">Historial</span>
                 </div>
-                <div id="history-container" class="flex-1 overflow-y-auto p-4 space-y-6 relative">
-                </div>
+                <div id="history-container" class="flex-1 overflow-y-auto p-4 space-y-6 relative"></div>
             </div>
         </aside>
-        </div>
-    </div>
 
-    <footer class="h-8 px-6 bg-slate-50 dark:bg-[#0d1117] border-t border-slate-200 dark:border-border-dark flex items-center justify-between shrink-0">
+
+    <!-- FOOTER -->
+    <footer class="h-8 lg:h-10 px-4 lg:px-6 border-t border-border-dark bg-surface-dark flex items-center justify-between shrink-0">
         <div class="flex gap-4">
-            <div class="flex items-center gap-1.5">
-                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                <span class="text-[9px] font-bold uppercase text-slate-500">System Ready</span>
+            <div class="flex items-center gap-2">
+                <span class="w-1.5 h-1.5 rounded-full bg-[#6CD400]"></span>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 font-medium">System Ready</span>
             </div>
-            <div class="flex items-center gap-1.5">
+            <div class="flex items-center gap-2">
                 <span class="w-1.5 h-1.5 rounded-full bg-primary"></span>
-                <span class="text-[9px] font-bold uppercase text-slate-500">Node {{ $device->alias }} Connected</span>
+                <span class="text-[9px] uppercase tracking-wider text-slate-400 font-medium">Node {{ $device->alias }} Connected</span>
             </div>
         </div>
-        <div class="flex items-center gap-2">
-            <span class="text-[9px] font-bold uppercase text-slate-400">Precision: ± 2.4m</span>
-            <span class="text-[9px] font-mono text-slate-400">V.2.4.0-STABLE</span>
+        <div class="flex gap-4">
+            <span class="text-[9px] uppercase tracking-wider text-slate-500 font-medium hidden sm:block">Precision: ± 2.4m</span>
+            <span class="text-[9px] uppercase tracking-wider text-slate-500 font-medium font-mono">v1.0.0</span>
         </div>
     </footer>
 
