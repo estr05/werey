@@ -1057,38 +1057,70 @@
     setLiveStatus('live');
   }
 
-  function connectDeviceSSE() {
-    setLiveStatus('connecting');
+  var MAX_SSE_RECONNECTS = 4; // Give up after 5 total attempts (0-indexed)
 
+  function connectDeviceSSE() {
+    if (sseReconnects > MAX_SSE_RECONNECTS) {
+      setLiveStatus('error');
+      console.warn('[Warey SSE] Max reconnects reached. SSE disabled.');
+      return;
+    }
+
+    setLiveStatus('connecting');
     if (sseInstance) sseInstance.close();
 
-    sseInstance = new EventSource(C.sseUrl);
+    // Pre-flight: verify the SSE endpoint exists before opening EventSource.
+    // EventSource doesn't expose HTTP status, so we check with fetch first.
+    fetch(C.sseUrl, { method: 'HEAD', credentials: 'same-origin' })
+      .then(function (res) {
+        if (res.status === 404 || res.status === 403) {
+          // Endpoint doesn't exist or is forbidden — no point retrying.
+          setLiveStatus('error');
+          console.warn('[Warey SSE] Endpoint unavailable (' + res.status + '). SSE disabled.');
+          return;
+        }
+        // Endpoint is reachable — open the real SSE connection.
+        sseInstance = new EventSource(C.sseUrl);
 
-    sseInstance.addEventListener('position', function (e) {
-      try {
-        sseReconnects = 0;
-        handlePosition(JSON.parse(e.data));
-      } catch (err) {
-        console.warn('[Warey SSE] parse error:', err);
-      }
-    });
+        sseInstance.addEventListener('position', function (e) {
+          try {
+            sseReconnects = 0;
+            handlePosition(JSON.parse(e.data));
+          } catch (err) {
+            console.warn('[Warey SSE] parse error:', err);
+          }
+        });
 
-    sseInstance.addEventListener('heartbeat', function () {
-      if (liveMarker) setLiveStatus('live');
-    });
+        sseInstance.addEventListener('heartbeat', function () {
+          sseReconnects = 0;
+          setLiveStatus('live');
+        });
 
-    sseInstance.onopen = function () {
-      sseReconnects = 0;
-      setLiveStatus('live');
-    };
+        sseInstance.onopen = function () {
+          sseReconnects = 0;
+          setLiveStatus('live');
+        };
 
-    sseInstance.onerror = function () {
-      sseReconnects++;
-      setLiveStatus('error');
-      sseInstance.close();
-      var delay = Math.min(3000 * Math.pow(2, sseReconnects - 1), 30000);
-      setTimeout(connectDeviceSSE, delay);
-    };
+        sseInstance.onerror = function () {
+          sseReconnects++;
+          setLiveStatus('error');
+          sseInstance.close();
+          if (sseReconnects > MAX_SSE_RECONNECTS) {
+            console.warn('[Warey SSE] Max reconnects reached. Giving up.');
+            return;
+          }
+          // Exponential back-off: 3s → 6s → 12s → 24s → 30s cap
+          var delay = Math.min(3000 * Math.pow(2, sseReconnects - 1), 30000);
+          setTimeout(connectDeviceSSE, delay);
+        };
+      })
+      .catch(function () {
+        // Network error — retry with back-off
+        sseReconnects++;
+        if (sseReconnects <= MAX_SSE_RECONNECTS) {
+          setTimeout(connectDeviceSSE, 8000);
+        }
+      });
   }
 
   // ─────────────────────────────────────────────────────────
