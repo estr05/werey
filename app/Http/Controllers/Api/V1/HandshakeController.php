@@ -162,6 +162,17 @@ class HandshakeController extends Controller
             'data'    => [
                 'token'             => $token,
                 'device_identifier' => $device->identifier,
+                'device'            => [
+                    'alias'            => $device->alias,
+                    'paired_at'        => $device->updated_at?->toIso8601String(),
+                    'last_seen'        => $device->last_seen?->toIso8601String(),
+                    'status'           => $device->pairing_status,
+                    'model'            => $request->device_model,
+                    'manufacturer'     => $request->device_manufacturer,
+                    'android_version'  => $request->os_version,
+                    'app_version'      => $request->app_version,
+                    'fingerprint'      => $deviceUuid,
+                ],
             ],
         ], 200);
     }
