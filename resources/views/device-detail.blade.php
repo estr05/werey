@@ -40,26 +40,46 @@
     
     <div class="px-6 pt-6 pb-2 shrink-0">
         <header class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all">
+            <div class="flex items-center gap-3 md:gap-4 overflow-hidden">
+                <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all shrink-0">
                     <span class="material-symbols-outlined text-white">arrow_back</span>
                 </a>
-                <div>
-                    <h1 class="text-2xl font-black text-white italic uppercase tracking-tighter">Unit Control Center</h1>
-                    <p class="text-[#8dc3ce] text-[10px] font-bold tracking-[0.3em] uppercase">Rastreo de Telemetría en Tiempo Real</p>
+                <div class="truncate">
+                    <h1 class="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter truncate">Unit Control Center</h1>
+                    <p class="text-[#8dc3ce] text-[8px] md:text-[10px] font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase truncate">Rastreo de Telemetría</p>
                 </div>
             </div>
-            <div class="bg-primary/10 border border-primary/20 px-4 py-2 rounded-full">
-                <span class="text-[10px] font-mono text-emerald-500 animate-pulse">● ENCRYPTED LINK ACTIVE</span>
+            <div class="flex items-center gap-2 shrink-0">
+                <button onclick="toggleLeftDrawer()" class="lg:hidden bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all text-emerald-400 hover:text-emerald-300 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-sm md:text-base">speed</span>
+                </button>
+                
+                <button onclick="toggleRightDrawer()" class="lg:hidden bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all text-blue-400 hover:text-blue-300 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-sm md:text-base">analytics</span>
+                </button>
+
+                <div class="hidden md:flex bg-primary/10 border border-primary/20 px-4 py-2 rounded-full">
+                    <span class="text-[10px] font-mono text-emerald-500 animate-pulse">● ENCRYPTED LINK ACTIVE</span>
+                </div>
             </div>
         </header>
     </div>
 
+    <!-- Backdrop para menús móviles -->
+    <div id="mobile-drawer-backdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
+
     <div class="flex-1 px-6 pb-6 min-h-0">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full relative">
             
             <!-- Columna Izquierda: Telemetría actual y Estatus -->
-            <div class="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-2">
+            <div id="left-drawer" class="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] bg-[#131416] lg:bg-transparent z-50 transform -translate-x-full lg:transform-none transition-transform duration-300 lg:relative lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-6 lg:p-0 lg:pr-2 shadow-2xl lg:shadow-none border-r border-slate-800 lg:border-none">
+                <!-- Mobile close button -->
+                <div class="flex justify-between items-center lg:hidden mb-2">
+                    <h2 class="text-white font-black italic uppercase">Telemetría</h2>
+                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white transition-colors p-2">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
                 <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
@@ -131,14 +151,6 @@
             <div class="lg:col-span-6 h-full relative">
                 <div class="absolute inset-0 bg-black rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
                     
-                    <!-- Overlay de Fecha del Historial en el Mapa -->
-                    <div class="absolute top-4 left-4 z-[400]">
-                        <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-4 py-2 text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg">
-                            <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
-                            Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
-                        </div>
-                    </div>
-
                     <!-- Overlay flotante para agregar punto seguro -->
                     <div id="perimeter-helper" class="absolute top-4 right-4 z-[400] hidden">
                         <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-4 shadow-xl max-w-xs animate-bounce">
@@ -199,7 +211,15 @@
             </div>
 
             <!-- Columna Derecha: Zonas Seguras, Coordenadas e Historial de Pings -->
-            <div class="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pl-2">
+            <div id="right-drawer" class="fixed inset-y-0 right-0 w-[85vw] max-w-[320px] bg-[#131416] lg:bg-transparent z-50 transform translate-x-full lg:transform-none transition-transform duration-300 lg:relative lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-6 lg:p-0 lg:pl-2 shadow-2xl lg:shadow-none border-l border-slate-800 lg:border-none">
+                <!-- Mobile close button -->
+                <div class="flex justify-between items-center lg:hidden mb-2">
+                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white transition-colors p-2">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                    <h2 class="text-white font-black italic uppercase">Métricas</h2>
+                </div>
+                
                 <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800 shrink-0">
                     <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Métricas del Punto Actual</h4>
                     <div class="bg-black/40 p-4 rounded-xl border border-white/5 relative group">
@@ -637,6 +657,63 @@
         function copyToClipboard(text) {
             navigator.clipboard.writeText(text);
             alert('Coordenadas copiadas al portapapeles.');
+        }
+
+        // --- Mobile Drawers Logic ---
+        let backdropTimeout;
+
+        function toggleLeftDrawer() {
+            const leftDrawer = document.getElementById('left-drawer');
+            const rightDrawer = document.getElementById('right-drawer');
+            const backdrop = document.getElementById('mobile-drawer-backdrop');
+            
+            if (leftDrawer.classList.contains('-translate-x-full')) {
+                // Si está cerrado, ábrelo (y cierra el derecho por si acaso)
+                rightDrawer.classList.add('translate-x-full');
+                leftDrawer.classList.remove('-translate-x-full');
+                
+                clearTimeout(backdropTimeout);
+                backdrop.classList.remove('hidden');
+                void backdrop.offsetWidth; // Trigger reflow
+                backdrop.classList.remove('opacity-0');
+            } else {
+                // Si está abierto, ciérralo
+                closeAllDrawers();
+            }
+        }
+
+        function toggleRightDrawer() {
+            const leftDrawer = document.getElementById('left-drawer');
+            const rightDrawer = document.getElementById('right-drawer');
+            const backdrop = document.getElementById('mobile-drawer-backdrop');
+            
+            if (rightDrawer.classList.contains('translate-x-full')) {
+                // Si está cerrado, ábrelo (y cierra el izquierdo)
+                leftDrawer.classList.add('-translate-x-full');
+                rightDrawer.classList.remove('translate-x-full');
+                
+                clearTimeout(backdropTimeout);
+                backdrop.classList.remove('hidden');
+                void backdrop.offsetWidth;
+                backdrop.classList.remove('opacity-0');
+            } else {
+                closeAllDrawers();
+            }
+        }
+
+        function closeAllDrawers() {
+            const leftDrawer = document.getElementById('left-drawer');
+            const rightDrawer = document.getElementById('right-drawer');
+            const backdrop = document.getElementById('mobile-drawer-backdrop');
+            
+            leftDrawer.classList.add('-translate-x-full');
+            rightDrawer.classList.add('translate-x-full');
+            
+            backdrop.classList.add('opacity-0');
+            clearTimeout(backdropTimeout);
+            backdropTimeout = setTimeout(() => {
+                backdrop.classList.add('hidden');
+            }, 300);
         }
 
         // Corregir cálculo de tamaño de Leaflet tras cargar el DOM y CSS
