@@ -75,12 +75,17 @@
         </header>
     </div>
 
-    <div class="flex-1 px-6 pb-6 min-h-0">
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+    <div class="flex-1 px-4 lg:px-6 pb-4 lg:pb-6 min-h-0 relative">
+        <div id="drawers-backdrop" onclick="closeAllDrawers()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-0 lg:gap-6 h-full">
             
-            <!-- Columna Izquierda: Telemetría actual y Estatus -->
-            <div class="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pr-2">
-                <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800">
+            <!-- Panel Izquierdo: Telemetría actual y Estatus -->
+            <aside id="left-drawer" class="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] bg-[#131416] border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-4 lg:p-0 lg:pr-2">
+                <div class="flex lg:hidden justify-between items-center mb-2">
+                    <h2 class="text-sm font-black text-white italic uppercase">Telemetría</h2>
+                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                </div>
+                <div class="bg-[#1c1e21] p-6 rounded-2xl border border-slate-800 shrink-0">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-3">
                             <div class="bg-emerald-500/10 p-2 rounded-lg text-emerald-500">
@@ -193,119 +198,125 @@
                 <span class="material-icons-round text-sm">lock_person</span>
                 <span class="text-[10px] font-bold uppercase tracking-widest">Bloqueo de Emergencia</span>
             </button>
-        </aside>
+            </aside>
 
-        <section class="flex-1 relative rounded-2xl overflow-hidden border border-slate-200 dark:border-border-dark bg-slate-100 dark:bg-[#0d1117] map-grid shadow-lg">
+            <!-- Columna Central: Mapa Interactivo -->
+            <div class="lg:col-span-6 h-full relative">
+                
+                <!-- Overlay de Fecha del Historial en el Mapa (Centrado o ajustado para móviles) -->
+                <div class="absolute top-4 left-4 lg:left-4 z-[400] flex gap-2 flex-col lg:flex-row">
+                    <!-- FAB Izquierdo (Móvil) -->
+                    <button onclick="openLeftDrawer()" class="lg:hidden bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-white p-2 rounded-xl shadow-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-base">analytics</span>
+                    </button>
+                    <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-3 py-2 text-[10px] lg:text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg hidden lg:flex">
+                        <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
+                        Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
+                    </div>
+                </div>
 
-            <div id="map-loader" class="absolute inset-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm z-[500] hidden flex flex-col items-center justify-center">
-                <div class="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
-                <span class="text-xs font-mono font-bold text-primary tracking-widest animate-pulse uppercase">Cargando Historial...</span>
+                <!-- FAB Derecho (Móvil) -->
+                <div class="absolute top-4 right-4 z-[400] flex flex-col items-end gap-2">
+                    <button onclick="openRightDrawer()" class="lg:hidden bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-white p-2 rounded-xl shadow-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-base">map</span>
+                    </button>
+                    <!-- Overlay flotante para agregar punto seguro -->
+                    <div id="perimeter-helper" class="hidden">
+                        <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-3 shadow-xl max-w-[200px] lg:max-w-xs animate-bounce">
+                            <div class="flex items-start gap-2">
+                                <span class="material-symbols-outlined text-[#6CD400] text-sm mt-0.5">place</span>
+                                <div>
+                                    <h5 class="text-[10px] lg:text-xs font-bold mb-1">Añadir Punto Seguro</h5>
+                                    <p class="text-[9px] lg:text-[10px] text-slate-400 leading-normal">Haz clic en el mapa.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="absolute inset-0 rounded-2xl overflow-hidden border border-slate-200 dark:border-border-dark bg-slate-100 dark:bg-[#0d1117] map-grid shadow-lg">
+
+                    <div id="map-loader" class="absolute inset-0 bg-white/80 dark:bg-[#0d1117]/80 backdrop-blur-sm z-[500] hidden flex flex-col items-center justify-center">
+                        <div class="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-4"></div>
+                        <span class="text-xs font-mono font-bold text-primary tracking-widest animate-pulse uppercase">Cargando Historial...</span>
+                    </div>
+
+                    <div class="absolute bottom-4 left-4 z-[400] flex flex-col gap-2 pointer-events-none">
+                        <div id="live-indicator" class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-2 pointer-events-auto">
+                            <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                            <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider">Conectando...</span>
+                        </div>
+                    </div>
+
+                    <div id="safe-place-form-card" class="absolute left-4 lg:left-1/2 lg:-translate-x-1/2 bottom-4 z-[400] hidden max-w-sm w-full mx-auto pointer-events-auto">
+                        <div class="bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border border-slate-200 dark:border-border-dark rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-slate-100">
+                            <div class="flex justify-between items-center mb-4">
+                                <h4 class="text-xs font-black uppercase flex items-center gap-2">
+                                    <span class="material-icons-round text-primary text-base">verified_user</span>
+                                    Guardar Zona Segura
+                                </h4>
+                                <button onclick="cancelSafePlace()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
+                                    <span class="material-icons-round text-sm">close</span>
+                                </button>
+                            </div>
+
+                            <form action="{{ route('safe-place.store', $device) }}" method="POST" class="space-y-4">
+                                @csrf
+                                <input type="hidden" name="latitude" id="form-lat">
+                                <input type="hidden" name="longitude" id="form-lng">
+
+                                <div>
+                                    <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Nombre del Lugar</label>
+                                    <input type="text" name="name" required placeholder="Ej. Casa de Abuelos, Escuela"
+                                           class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl py-2 px-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-primary transition-all">
+                                </div>
+
+                                <div>
+                                    <div class="flex justify-between items-center mb-1">
+                                        <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Diámetro / Radio (Meters)</label>
+                                        <span id="radius-value" class="text-xs font-mono font-bold text-primary">150m</span>
+                                    </div>
+                                    <input type="range" name="radius_meters" id="radius-slider" min="50" max="1000" step="25" value="150"
+                                           class="w-full accent-primary bg-slate-200 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg"
+                                           oninput="updateCircleRadius(this.value)">
+                                </div>
+
+                                <button type="submit"
+                                        class="w-full bg-primary hover:bg-cyan-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">
+                                    Guardar Perímetro
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div id="map"></div>
+                </section>
             </div>
 
-            <div class="absolute top-4 left-4 z-[400] flex gap-3">
-                <div class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-3">
-                    <span class="material-icons-round text-primary text-sm">calendar_today</span>
-                    <div class="flex flex-col relative">
-                        <span class="text-[9px] uppercase font-bold text-slate-500 leading-none mb-0.5">Historial</span>
-                        <select onchange="window.location.href = '?date=' + this.value;" class="bg-transparent border-none outline-none cursor-pointer font-mono font-bold appearance-none p-0 m-0 text-xs text-slate-900 dark:text-white leading-none">
+            <!-- Panel Derecho: Zonas Seguras, Coordenadas e Historial de Pings -->
+            <aside id="right-drawer" class="fixed inset-y-0 right-0 w-[85vw] max-w-[320px] bg-[#131416] border-l border-slate-800 z-50 transform translate-x-full transition-transform duration-300 ease-in-out lg:static lg:w-auto lg:max-w-none lg:translate-x-0 lg:border-none lg:bg-transparent lg:z-auto lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto p-4 lg:p-0 lg:pl-2 shrink-0">
+                <div class="flex lg:hidden justify-between items-center mb-2">
+                    <button onclick="closeAllDrawers()" class="text-slate-500 hover:text-white"><span class="material-symbols-outlined">close</span></button>
+                    <h2 class="text-sm font-black text-white italic uppercase">Métricas</h2>
+                </div>
+                <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex flex-col overflow-hidden shrink-0">
+                    <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
+                        <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Historial Activo</h3>
+                        <span class="material-icons-round text-sm text-slate-400">calendar_today</span>
+                    </div>
+                    <div class="p-3">
+                        <select onchange="window.location.href = '?date=' + this.value;" class="w-full bg-slate-100 dark:bg-background-dark border-none outline-none cursor-pointer font-mono font-bold text-xs text-slate-900 dark:text-white rounded-lg p-2">
                             @if(!in_array($selectedDate, $availableDates->toArray()))
-                                <option value="{{ $selectedDate }}" class="bg-white dark:bg-surface-dark" selected>{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }} (Sin datos)</option>
+                                <option value="{{ $selectedDate }}" selected>{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }} (Sin datos)</option>
                             @endif
                             @foreach($availableDates as $date)
-                                <option value="{{ $date }}" class="bg-white dark:bg-surface-dark" {{ $date == $selectedDate ? 'selected' : '' }}>
+                                <option value="{{ $date }}" {{ $date == $selectedDate ? 'selected' : '' }}>
                                     {{ \Carbon\Carbon::parse($date)->format('d/m/Y') }}
                                 </option>
                             @endforeach
                         </select>
                     </div>
-                    <span class="material-icons-round text-slate-400 text-sm pointer-events-none">expand_more</span>
                 </div>
-
-                <div id="live-indicator" class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-2">
-                    <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider">Conectando...</span>
-                </div>
-            </div>
-
-            <!-- Columna Central: Mapa Interactivo -->
-            <div class="lg:col-span-6 h-full relative">
-                <div class="absolute inset-0 bg-black rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-                    
-                    <!-- Overlay de Fecha del Historial en el Mapa -->
-                    <div class="absolute top-4 left-4 z-[400]">
-                        <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-4 py-2 text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg">
-                            <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
-                            Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
-                        </div>
-                    </div>
-
-                    <!-- Overlay flotante para agregar punto seguro -->
-                    <div id="perimeter-helper" class="absolute top-4 right-4 z-[400] hidden">
-                        <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-4 shadow-xl max-w-xs animate-bounce">
-                            <div class="flex items-start gap-2.5">
-                                <span class="material-symbols-outlined text-[#6CD400] text-lg mt-0.5">place</span>
-                                <div>
-                                    <h5 class="text-xs font-bold mb-1">Añadir Punto Seguro</h5>
-                                    <p class="text-[10px] text-slate-400 leading-normal">Haz clic en el mapa para ubicar el centro de tu nueva zona segura.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-            <div id="safe-place-form-card" class="absolute left-4 bottom-4 z-[400] hidden max-w-sm w-full mx-4">
-                <div class="bg-white/95 dark:bg-surface-dark/95 backdrop-blur-md border border-slate-200 dark:border-border-dark rounded-2xl p-5 shadow-2xl text-slate-900 dark:text-slate-100">
-                    <div class="flex justify-between items-center mb-4">
-                        <h4 class="text-xs font-black uppercase flex items-center gap-2">
-                            <span class="material-icons-round text-primary text-base">verified_user</span>
-                            Guardar Zona Segura
-                        </h4>
-                        <button onclick="cancelSafePlace()" class="text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors">
-                            <span class="material-icons-round text-sm">close</span>
-                        </button>
-                    </div>
-
-                    <form action="{{ route('safe-place.store', $device) }}" method="POST" class="space-y-4">
-                        @csrf
-                        <input type="hidden" name="latitude" id="form-lat">
-                        <input type="hidden" name="longitude" id="form-lng">
-
-                        <div>
-                            <label class="block text-[9px] font-bold text-slate-500 uppercase mb-1 tracking-wider">Nombre del Lugar</label>
-                            <input type="text" name="name" required placeholder="Ej. Casa de Abuelos, Escuela"
-                                   class="w-full bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-xl py-2 px-3 text-xs text-slate-900 dark:text-white placeholder-slate-400 outline-none focus:border-primary transition-all">
-                        </div>
-
-                        <div>
-                            <div class="flex justify-between items-center mb-1">
-                                <label class="block text-[9px] font-bold text-slate-500 uppercase tracking-wider">Diámetro / Radio (Meters)</label>
-                                <span id="radius-value" class="text-xs font-mono font-bold text-primary">150m</span>
-                            </div>
-                            <input type="range" name="radius_meters" id="radius-slider" min="50" max="1000" step="25" value="150"
-                                   class="w-full accent-primary bg-slate-200 dark:bg-background-dark border border-slate-200 dark:border-border-dark rounded-lg"
-                                   oninput="updateCircleRadius(this.value)">
-                        </div>
-
-                        <button type="submit"
-                                class="w-full bg-primary hover:bg-cyan-600 text-white py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all">
-                            Guardar Perímetro
-                        </button>
-                    </form>
-                </div>
-            </div>
-
-            <div id="map"></div>
-        </section>
-
-        <aside class="w-96 flex flex-col gap-4 overflow-y-auto pl-2 shrink-0">
-            <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex flex-col overflow-hidden shrink-0">
-                <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
-                    <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">Métricas del Punto Actual</h3>
-                    <span class="material-icons-round text-sm text-slate-400">info</span>
-                </div>
-            </div>
-
-            <!-- Columna Derecha: Zonas Seguras, Coordenadas e Historial de Pings -->
-            <div class="lg:col-span-3 flex flex-col gap-4 h-full overflow-y-auto pl-2">
                 <div class="bg-[#1c1e21] p-5 rounded-2xl border border-slate-800 shrink-0">
                     <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Métricas del Punto Actual</h4>
                     <div class="bg-black/40 p-4 rounded-xl border border-white/5 relative group">
@@ -364,7 +375,8 @@
                 </div>
             </div>
         </aside>
-    </main>
+        </div>
+    </div>
 
     <footer class="h-8 px-6 bg-slate-50 dark:bg-[#0d1117] border-t border-slate-200 dark:border-border-dark flex items-center justify-between shrink-0">
         <div class="flex gap-4">
@@ -740,6 +752,43 @@
                 }
             }, 100);
         });
+
+        // --- SISTEMA DE PANELES (DRAWERS) PARA MÓVILES ---
+        function openLeftDrawer() {
+            var drawer = document.getElementById('left-drawer');
+            var backdrop = document.getElementById('drawers-backdrop');
+            
+            drawer.classList.remove('-translate-x-full');
+            
+            backdrop.classList.remove('hidden');
+            void backdrop.offsetWidth; // Trigger reflow
+            backdrop.classList.remove('opacity-0');
+        }
+
+        function openRightDrawer() {
+            var drawer = document.getElementById('right-drawer');
+            var backdrop = document.getElementById('drawers-backdrop');
+            
+            drawer.classList.remove('translate-x-full');
+            
+            backdrop.classList.remove('hidden');
+            void backdrop.offsetWidth; // Trigger reflow
+            backdrop.classList.remove('opacity-0');
+        }
+
+        function closeAllDrawers() {
+            var leftDrawer = document.getElementById('left-drawer');
+            var rightDrawer = document.getElementById('right-drawer');
+            var backdrop = document.getElementById('drawers-backdrop');
+            
+            leftDrawer.classList.add('-translate-x-full');
+            rightDrawer.classList.add('translate-x-full');
+            
+            backdrop.classList.add('opacity-0');
+            setTimeout(function() {
+                backdrop.classList.add('hidden');
+            }, 300);
+        }
     </script>
     <script src="{{ asset('js/device-detail.js') }}"></script>
 </body>

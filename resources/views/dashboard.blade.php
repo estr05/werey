@@ -123,22 +123,22 @@
             </div>
         @endif
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10" id="stats-grid">
-            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
-                <p class="text-[10px] font-bold text-slate-500 uppercase">Total Fleet</p>
-                <p class="text-3xl font-black text-slate-900 dark:text-white" id="stat-total">{{ $stats['total'] }}</p>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8 md:mb-10" id="stats-grid">
+            <div class="bg-white dark:bg-surface-dark p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-border-dark flex flex-col justify-center">
+                <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Total Fleet</p>
+                <p class="text-2xl md:text-3xl font-black text-slate-900 dark:text-white leading-none" id="stat-total">{{ $stats['total'] }}</p>
             </div>
-            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
-                <p class="text-[10px] font-bold text-slate-500 uppercase">Moving Now</p>
-                <p class="text-3xl font-black text-emerald-500" id="stat-moving">{{ $stats['moving'] }}</p>
+            <div class="bg-white dark:bg-surface-dark p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-border-dark flex flex-col justify-center">
+                <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Moving Now</p>
+                <p class="text-2xl md:text-3xl font-black text-emerald-500 leading-none" id="stat-moving">{{ $stats['moving'] }}</p>
             </div>
-            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
-                <p class="text-[10px] font-bold text-slate-500 uppercase">Online</p>
-                <p class="text-3xl font-black text-primary" id="stat-online">{{ $stats['online'] }}</p>
+            <div class="bg-white dark:bg-surface-dark p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-border-dark flex flex-col justify-center">
+                <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Online</p>
+                <p class="text-2xl md:text-3xl font-black text-primary leading-none" id="stat-online">{{ $stats['online'] }}</p>
             </div>
-            <div class="bg-white dark:bg-surface-dark p-6 rounded-2xl border border-slate-200 dark:border-border-dark">
-                <p class="text-[10px] font-bold text-slate-500 uppercase">Alerts</p>
-                <p class="text-3xl font-black text-red-500" id="stat-alerts">{{ $stats['alerts'] }}</p>
+            <div class="bg-white dark:bg-surface-dark p-4 md:p-6 rounded-2xl border border-slate-200 dark:border-border-dark flex flex-col justify-center">
+                <p class="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase leading-none mb-1">Alerts</p>
+                <p class="text-2xl md:text-3xl font-black text-red-500 leading-none" id="stat-alerts">{{ $stats['alerts'] }}</p>
             </div>
         </div>
 
