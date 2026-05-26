@@ -44,7 +44,16 @@
 <body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
 
     <div class="p-8">
-        <header class="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <!-- Mobile Header (Visible only < lg) -->
+        <header class="lg:hidden flex items-center justify-between mb-8">
+            <h1 class="text-3xl font-black tracking-tighter uppercase italic text-white">Warey</h1>
+            <button onclick="openDashboardMenu()" class="text-white p-2 rounded-lg bg-slate-800 hover:bg-slate-700 transition-colors">
+                <span class="material-symbols-outlined">menu</span>
+            </button>
+        </header>
+
+        <!-- Desktop Header (Visible only >= lg) -->
+        <header class="hidden lg:flex mb-10 items-center justify-between gap-4">
             <div>
                 <h1 class="text-4xl font-black tracking-tighter uppercase italic text-slate-900 dark:text-white">Warey</h1>
                 <p class="text-primary text-xs font-bold tracking-widest uppercase">Telemetry Control Node • Bienvenido, {{ Auth::user()->name }}</p>
@@ -64,6 +73,32 @@
                 </form>
             </div>
         </header>
+
+        <!-- Mobile Drawer Menu -->
+        <div id="mobile-dashboard-backdrop" onclick="closeDashboardMenu()" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 hidden lg:hidden opacity-0 transition-opacity duration-300"></div>
+        <div id="mobile-dashboard-menu" class="fixed inset-y-0 left-0 w-[85vw] max-w-[320px] bg-[#1c1e21] border-r border-slate-800 z-50 transform -translate-x-full transition-transform duration-300 ease-in-out lg:hidden flex flex-col shadow-2xl">
+            <div class="p-6 border-b border-slate-800 flex justify-between items-center">
+                <div>
+                    <h1 class="text-3xl font-black tracking-tighter uppercase italic text-white mb-2">Warey</h1>
+                    <p class="text-[#8dc3ce] text-[10px] font-bold tracking-widest uppercase">Bienvenido,<br>{{ Auth::user()->name }}</p>
+                </div>
+                <button onclick="closeDashboardMenu()" class="text-slate-500 hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="p-6 flex flex-col gap-4">
+                <button onclick="openLinkModal(); closeDashboardMenu();" class="w-full bg-[#005d70] hover:bg-[#007b94] text-white px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-sm">add_to_home_screen</span> Vincular Teléfono
+                </button>
+                
+                <form action="{{ route('logout') }}" method="POST" class="w-full">
+                    @csrf
+                    <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-300 px-5 py-3 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-sm">logout</span> Salir
+                    </button>
+                </form>
+            </div>
+        </div>
 
         @if ($errors->any())
             <div class="bg-red-500/10 border border-red-500/30 text-red-400 text-xs rounded-2xl p-5 mb-10">
@@ -698,6 +733,30 @@
         document.addEventListener('DOMContentLoaded', function () {
             sseConnection = connectSSE();
         });
+        // --- Mobile Dashboard Menu Logic ---
+        function openDashboardMenu() {
+            const menu = document.getElementById('mobile-dashboard-menu');
+            const backdrop = document.getElementById('mobile-dashboard-backdrop');
+            
+            menu.classList.remove('-translate-x-full');
+            
+            backdrop.classList.remove('hidden');
+            // Trigger reflow for transition
+            void backdrop.offsetWidth;
+            backdrop.classList.remove('opacity-0');
+        }
+
+        function closeDashboardMenu() {
+            const menu = document.getElementById('mobile-dashboard-menu');
+            const backdrop = document.getElementById('mobile-dashboard-backdrop');
+            
+            menu.classList.add('-translate-x-full');
+            
+            backdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                backdrop.classList.add('hidden');
+            }, 300);
+        }
     </script>
 </body>
 </html>
