@@ -750,7 +750,10 @@
     showLoader();
     clearMapHistory();
     try {
-      var res = await fetch(C.historyUrl + '?date=' + encodeURIComponent(date));
+      var res = await fetch(C.historyUrl + '?date=' + encodeURIComponent(date), {
+        credentials: 'same-origin',
+        headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+      });
       if (!res.ok) throw new Error('HTTP ' + res.status);
       var json = await res.json();
       if (json.success && json.points && json.points.length > 0) {
