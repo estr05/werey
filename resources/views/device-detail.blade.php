@@ -58,19 +58,30 @@
 
 <body class="bg-[#131416] text-slate-100 h-screen overflow-hidden flex flex-col">
     
-    <div class="px-6 pt-6 pb-2 shrink-0">
-        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
-            <div class="flex items-center gap-3 md:gap-4">
+    <div class="px-4 lg:px-6 pt-4 lg:pt-6 pb-2 shrink-0">
+        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 lg:mb-4">
+            <!-- Izquierda: Menú Telemetría + Back + Título -->
+            <div class="flex items-center gap-2 md:gap-4 w-full md:w-auto">
+                <button onclick="openLeftDrawer()" class="lg:hidden p-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-all shrink-0 border border-slate-700">
+                    <span class="material-symbols-outlined text-base">analytics</span>
+                </button>
                 <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all shrink-0">
-                    <span class="material-symbols-outlined text-white">arrow_back</span>
+                    <span class="material-symbols-outlined text-white text-base">arrow_back</span>
                 </a>
-                <div>
-                    <h1 class="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter leading-tight">Unit Control Center</h1>
-                    <p class="text-[#8dc3ce] text-[9px] md:text-[10px] font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase mt-1 md:mt-0">Rastreo de Telemetría en Tiempo Real</p>
+                <div class="min-w-0">
+                    <h1 class="text-lg md:text-2xl font-black text-white italic uppercase tracking-tighter leading-tight truncate">Unit Control Center</h1>
+                    <p class="text-[#8dc3ce] text-[8px] md:text-[10px] font-bold tracking-[0.1em] md:tracking-[0.3em] uppercase mt-0.5 md:mt-0 truncate">Rastreo en Tiempo Real</p>
                 </div>
             </div>
-            <div class="bg-primary/10 border border-primary/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0">
-                <span class="text-[9px] md:text-[10px] font-mono text-emerald-500 animate-pulse whitespace-nowrap">● ENCRYPTED LINK ACTIVE</span>
+
+            <!-- Derecha: Estado Link + Menú Métricas -->
+            <div class="flex items-center justify-between md:justify-end gap-3 w-full md:w-auto">
+                <div class="bg-primary/10 border border-primary/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0">
+                    <span class="text-[9px] md:text-[10px] font-mono text-emerald-500 animate-pulse whitespace-nowrap">● ENCRYPTED LINK ACTIVE</span>
+                </div>
+                <button onclick="openRightDrawer()" class="lg:hidden p-2 bg-slate-800 text-slate-300 hover:text-white rounded-lg transition-all shrink-0 border border-slate-700">
+                    <span class="material-symbols-outlined text-base">tune</span>
+                </button>
             </div>
         </header>
     </div>
@@ -203,12 +214,8 @@
             <!-- Columna Central: Mapa Interactivo -->
             <div class="lg:col-span-6 h-full relative">
                 
-                <!-- Overlay de Fecha del Historial en el Mapa (Centrado o ajustado para móviles) -->
-                <div class="absolute top-4 left-4 lg:left-4 z-[400] flex gap-2 flex-col lg:flex-row">
-                    <!-- FAB Izquierdo (Móvil) -->
-                    <button onclick="openLeftDrawer()" class="lg:hidden bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-white p-2 rounded-xl shadow-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-base">analytics</span>
-                    </button>
+                <!-- Overlay de Fecha del Historial en el Mapa -->
+                <div class="absolute top-4 left-4 lg:left-4 z-[400]">
                     <div class="bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-slate-300 rounded-xl px-3 py-2 text-[10px] lg:text-xs font-bold tracking-wider flex items-center gap-2 shadow-lg hidden lg:flex">
                         <span class="material-symbols-outlined text-[#00e5ff] text-base">calendar_today</span>
                         Historial: {{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}
@@ -217,9 +224,6 @@
 
                 <!-- FAB Derecho (Móvil) -->
                 <div class="absolute top-4 right-4 z-[400] flex flex-col items-end gap-2">
-                    <button onclick="openRightDrawer()" class="lg:hidden bg-[#1c1e21]/90 backdrop-blur-md border border-slate-700 text-white p-2 rounded-xl shadow-lg flex items-center justify-center">
-                        <span class="material-symbols-outlined text-base">map</span>
-                    </button>
                     <!-- Overlay flotante para agregar punto seguro -->
                     <div id="perimeter-helper" class="hidden">
                         <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-3 shadow-xl max-w-[200px] lg:max-w-xs animate-bounce">
