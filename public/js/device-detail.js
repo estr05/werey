@@ -23,6 +23,7 @@
     zoomControl: false,
     attributionControl: false,
   }).setView([C.lat, C.lng], 15);
+  window._wareyMap = map; // Expose for invalidateSize calls from drawer handlers
 
   L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
