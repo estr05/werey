@@ -211,19 +211,6 @@
                 <span class="text-xs font-mono font-bold text-primary tracking-widest animate-pulse uppercase">Cargando Historial...</span>
             </div>
 
-            <div class="absolute top-4 left-4 z-[400] flex gap-2">
-                <div class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-3">
-                    <span class="material-icons-round text-primary text-sm">calendar_today</span>
-                    <div class="flex flex-col">
-                        <span class="text-[9px] uppercase font-bold text-slate-500 leading-none mb-0.5">Historial</span>
-                        <span class="text-xs font-bold mono leading-none">{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}</span>
-                    </div>
-                </div>
-                <div id="live-indicator" class="bg-white/80 dark:bg-surface-dark/90 backdrop-blur-md px-3 py-2 rounded-lg border border-slate-200 dark:border-border-dark shadow-xl flex items-center gap-2">
-                    <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
-                    <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider">Conectando...</span>
-                </div>
-            </div>
 
             <div id="perimeter-helper" class="absolute top-4 right-4 z-[400] hidden">
                 <div class="bg-[#1c1e21]/95 backdrop-blur-md border border-[#6CD400] text-white rounded-xl p-4 shadow-xl max-w-xs animate-bounce">
@@ -281,7 +268,22 @@
                 <h2 class="text-sm font-bold text-white uppercase tracking-wider">MÃ©tricas</h2>
             </div>
 
-            <!-- Current Point Metrics -->
+            <!-- Status bar: fecha + estado en vivo -->
+            <div class="flex gap-2 shrink-0">
+                <div class="flex-1 bg-background-dark/60 border border-border-dark rounded-xl px-3 py-2.5 flex items-center gap-2.5">
+                    <span class="material-icons-round text-primary text-sm">calendar_today</span>
+                    <div class="flex flex-col">
+                        <span class="text-[9px] uppercase font-bold text-slate-500 leading-none mb-0.5">Historial</span>
+                        <span class="text-xs font-bold font-mono leading-none">{{ \Carbon\Carbon::parse($selectedDate)->format('d/m/Y') }}</span>
+                    </div>
+                </div>
+                <div id="live-indicator" class="bg-background-dark/60 border border-border-dark rounded-xl px-3 py-2.5 flex items-center gap-2">
+                    <span id="live-dot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                    <span id="live-text" class="text-[10px] font-bold uppercase text-amber-500 tracking-wider whitespace-nowrap">Conectando...</span>
+                </div>
+            </div>
+
+
             <div class="bg-white dark:bg-surface-dark rounded-xl border border-slate-200 dark:border-border-dark flex flex-col overflow-hidden shrink-0">
                 <div class="p-4 border-b border-slate-200 dark:border-border-dark flex items-center justify-between">
                     <h3 class="text-[10px] font-bold uppercase tracking-wider text-slate-500">MÃ©tricas del Punto Actual</h3>
