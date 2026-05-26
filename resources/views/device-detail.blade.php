@@ -59,18 +59,18 @@
 <body class="bg-[#131416] text-slate-100 h-screen overflow-hidden flex flex-col">
     
     <div class="px-6 pt-6 pb-2 shrink-0">
-        <header class="flex items-center justify-between mb-4">
-            <div class="flex items-center gap-4">
-                <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all">
+        <header class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-4">
+            <div class="flex items-center gap-3 md:gap-4">
+                <a href="{{ route('dashboard') }}" class="bg-slate-800 p-2 rounded-lg hover:bg-slate-700 transition-all shrink-0">
                     <span class="material-symbols-outlined text-white">arrow_back</span>
                 </a>
                 <div>
-                    <h1 class="text-2xl font-black text-white italic uppercase tracking-tighter">Unit Control Center</h1>
-                    <p class="text-[#8dc3ce] text-[10px] font-bold tracking-[0.3em] uppercase">Rastreo de Telemetría en Tiempo Real</p>
+                    <h1 class="text-xl md:text-2xl font-black text-white italic uppercase tracking-tighter leading-tight">Unit Control Center</h1>
+                    <p class="text-[#8dc3ce] text-[9px] md:text-[10px] font-bold tracking-[0.2em] md:tracking-[0.3em] uppercase mt-1 md:mt-0">Rastreo de Telemetría en Tiempo Real</p>
                 </div>
             </div>
-            <div class="bg-primary/10 border border-primary/20 px-4 py-2 rounded-full">
-                <span class="text-[10px] font-mono text-emerald-500 animate-pulse">● ENCRYPTED LINK ACTIVE</span>
+            <div class="bg-primary/10 border border-primary/20 px-3 py-1.5 md:px-4 md:py-2 rounded-full shrink-0">
+                <span class="text-[9px] md:text-[10px] font-mono text-emerald-500 animate-pulse whitespace-nowrap">● ENCRYPTED LINK ACTIVE</span>
             </div>
         </header>
     </div>
